@@ -152,3 +152,43 @@
   margin: 0;
   font-size: 20px;
 }
+.top-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.top-row > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+.settings-btn {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  font-size: 22px;
+  border: 0;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+.stale-banner {
+  font-size: 13px;
+}
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+}
+.setting-row input {
+  width: 24px;
+  height: 24px;
+}
+.setting-group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.setting-group legend {
+  font-weight: 600;
+}

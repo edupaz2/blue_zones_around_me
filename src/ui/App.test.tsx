@@ -10,6 +10,7 @@ import type { ZoneData } from './useZoneData';
 const mapProps = vi.hoisted(() => ({
   onLongPress: null as null | ((p: { lat: number; lng: number }) => void),
   highlightedZoneId: undefined as string | null | undefined,
+  settings: undefined as undefined | { showVisitor: boolean; showResident: boolean },
 }));
 const nav = vi.hoisted(() => ({ openNavigation: vi.fn() }));
 vi.mock('./openNavigation', () => nav);
@@ -17,7 +18,9 @@ vi.mock('./MapView', () => ({
   default: (props: {
     onLongPress: (p: { lat: number; lng: number }) => void;
     highlightedZoneId: string | null;
+    settings: { showVisitor: boolean; showResident: boolean };
   }) => {
+    mapProps.settings = props.settings;
     mapProps.onLongPress = props.onLongPress;
     mapProps.highlightedZoneId = props.highlightedZoneId;
     return <div data-testid="map" />;
@@ -360,5 +363,31 @@ describe('App reload survival and found-a-spot', () => {
     expect(screen.getAllByRole('listitem').length).toBe(before - 1);
     expect(storedSession().tried).toEqual([selected]);
     expect(mapProps.highlightedZoneId).toBeNull();
+  });
+});
+
+describe('App settings', () => {
+  it('opens the sheet from the gear and unchecking green persists and reaches the map', async () => {
+    vi.stubGlobal('fetch', mockFetchOk());
+    saveSettings({ showVisitor: true, showResident: true, navApp: null });
+    render(<App />);
+    await screen.findByTestId('app-ready');
+    expect(mapProps.settings?.showResident).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    expect(screen.getByText('Zone data date: 2026-09-30')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox', { name: /Zona verde/ }));
+    expect(loadSettings().showResident).toBe(false);
+    expect(mapProps.settings?.showResident).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('shows the stale-data banner for old zone data', async () => {
+    vi.stubGlobal('fetch', mockFetchOk());
+    vi.spyOn(Date, 'now').mockReturnValue(Date.UTC(2027, 5, 1));
+    render(<App />);
+    await screen.findByTestId('app-ready');
+    expect(screen.getByText(/Consider refreshing it/)).toBeInTheDocument();
+    vi.restoreAllMocks();
   });
 });

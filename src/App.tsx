@@ -10,6 +10,8 @@ import MapView from './ui/MapView';
 import NavAppChooser from './ui/NavAppChooser';
 import { openNavigation } from './ui/openNavigation';
 import SearchBar from './ui/SearchBar';
+import SettingsSheet from './ui/SettingsSheet';
+import StaleDataBanner from './ui/StaleDataBanner';
 import { useAppState } from './ui/useAppState';
 import { useZoneData } from './ui/useZoneData';
 import type { ZoneData } from './ui/useZoneData';
@@ -23,6 +25,7 @@ function Ready({ data }: { data: ZoneData }) {
   // Derived: a selection only counts while that zone is still in the list.
   const selectedId = ranked.ranked.some((r) => r.zone.id === pickedId) ? pickedId : null;
   const [pointError, setPointError] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const startDestination = (point: LatLng, label: string) => {
     setPointError(false);
@@ -78,7 +81,18 @@ function Ready({ data }: { data: ZoneData }) {
         recenterSignal={0}
       />
       <div className="overlay-top">
-        <SearchBar onSelect={(r) => startDestination(r.point, r.label)} />
+        <div className="top-row">
+          <SearchBar onSelect={(r) => startDestination(r.point, r.label)} />
+          <button
+            type="button"
+            className="settings-btn"
+            aria-label="Settings"
+            onClick={() => setSettingsOpen(true)}
+          >
+            ⚙
+          </button>
+        </div>
+        <StaleDataBanner sourceDate={data.sourceDate} now={Date.now()} />
         {pointError && (
           <p className="note" role="alert">
             That point is outside the Madrid SER area
@@ -110,6 +124,14 @@ function Ready({ data }: { data: ZoneData }) {
         <FoundSpotPrompt
           onFound={() => dispatch({ type: 'found', now: Date.now() })}
           onNext={onNext}
+        />
+      )}
+      {settingsOpen && (
+        <SettingsSheet
+          settings={settings}
+          sourceDate={data.sourceDate}
+          onChange={setSettings}
+          onClose={() => setSettingsOpen(false)}
         />
       )}
       {pendingGoId !== null && <NavAppChooser onChoose={onChooseApp} />}
