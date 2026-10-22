@@ -45,6 +45,19 @@ async function waitMapIdle(page: Page): Promise<void> {
   );
 }
 
+async function expectRecenterClear(page: Page) {
+  const r = await page.locator('button[aria-label="Recenter"]').boundingBox();
+  const o = await page.locator('[data-testid="overlay-bottom"]').boundingBox();
+  expect(r).not.toBeNull();
+  expect(o).not.toBeNull();
+  const overlap =
+    r!.x < o!.x + o!.width &&
+    r!.x + r!.width > o!.x &&
+    r!.y < o!.y + o!.height &&
+    r!.y + r!.height > o!.y;
+  expect(overlap).toBe(false);
+}
+
 async function screenshot(page: Page, testInfo: TestInfo, name: string) {
   const path = testInfo.outputPath(name);
   await page.screenshot({ path, fullPage: true });
@@ -74,6 +87,9 @@ test('tried zone is excluded after reload and next zone', async ({ page }, testI
 
   await page.goto('/?e2e');
   await page.locator('[data-testid="app-ready"]').waitFor();
+  await expect.poll(() => renderedFeatureCount(page)).toBeGreaterThan(0);
+  await waitMapIdle(page);
+  await screenshot(page, testInfo, 'e2e-initial.png');
   await page.getByRole('button', { name: 'Around me' }).click();
 
   const cards = page.locator('.cards > li[data-zone-id]');
@@ -89,6 +105,10 @@ test('tried zone is excluded after reload and next zone', async ({ page }, testI
   expect(box!.height).toBeGreaterThan(0);
   await expect.poll(() => renderedFeatureCount(page)).toBeGreaterThan(0);
   await waitMapIdle(page);
+  await expect
+    .poll(() => page.evaluate(() => window.__bzaMap!.getZoom()))
+    .toBeGreaterThanOrEqual(14);
+  await expectRecenterClear(page);
   await screenshot(page, testInfo, 'e2e-after-around-me.png');
 
   await cards.first().getByRole('button', { name: 'Go' }).click();
@@ -100,6 +120,8 @@ test('tried zone is excluded after reload and next zone', async ({ page }, testI
   await page.reload();
   const dialog = page.getByRole('dialog', { name: 'Found a spot?' });
   await expect(dialog).toBeVisible();
+  await waitMapIdle(page);
+  await screenshot(page, testInfo, 'e2e-reload-prompt.png');
   await dialog.getByRole('button', { name: 'No, next zone' }).click();
 
   await expect(cards).toHaveCount(3);
@@ -107,6 +129,7 @@ test('tried zone is excluded after reload and next zone', async ({ page }, testI
   await expect(map).toHaveAttribute('data-tried-count', '1');
   await expect.poll(() => renderedFeatureCount(page)).toBeGreaterThan(0);
   await waitMapIdle(page);
+  await expectRecenterClear(page);
   await screenshot(page, testInfo, 'e2e-after-next-zone.png');
 
   // Tried-zone styling (`tried: true` on rendered points) is not asserted: at the

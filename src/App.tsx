@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { madridConfig } from './cities/madrid/config';
 import { inBounds } from './core/bounds';
 import { buildNavigationUrl } from './core/handoff';
@@ -61,6 +61,34 @@ function Ready({ data }: { data: ZoneData }) {
     if (zoneId !== null) launch(zoneId, app);
   };
 
+  const bottomRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = bottomRef.current;
+    if (!el) return;
+    const main = el.parentElement;
+    const apply = () => main?.style.setProperty('--overlay-bottom-h', `${el.offsetHeight}px`);
+    apply();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const origin = session.origin;
+  const triedKey = session.tried.join(',');
+  const fitTo = useMemo(() => {
+    if (!origin || session.status !== 'choosing') return null;
+    const triedPoints = data.candidates
+      .filter((c) => session.tried.includes(c.id))
+      .map((c) => c.target);
+    return {
+      id: `${origin.point.lat},${origin.point.lng}|${session.tried.length}|${ranked.radiusM ?? ''}`,
+      points: [origin.point, ...ranked.ranked.map((r) => r.zone.target), ...triedPoints],
+    };
+    // Keyed on the identifying state only, so position updates do not re-fit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [origin?.point.lat, origin?.point.lng, session.status, triedKey, ranked.radiusM]);
+
   const onNext = () => {
     const origin =
       session.origin?.mode === 'around' && position
@@ -79,6 +107,7 @@ function Ready({ data }: { data: ZoneData }) {
         highlightedZoneId={selectedId}
         onLongPress={onLongPress}
         recenterSignal={0}
+        fitTo={fitTo}
       />
       <div className="overlay-top">
         <div className="top-row">
@@ -99,7 +128,7 @@ function Ready({ data }: { data: ZoneData }) {
           </p>
         )}
       </div>
-      <div className="overlay-bottom">
+      <div className="overlay-bottom" data-testid="overlay-bottom" ref={bottomRef}>
         {session.status === 'choosing' && session.origin && (
           <CandidatePanel
             result={ranked}

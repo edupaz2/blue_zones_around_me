@@ -9,6 +9,7 @@ import { madridConfig } from '../cities/madrid/config';
 import type { LatLng, Settings } from '../core/types';
 import { createLongPress } from './longPress';
 import type { PressPoint } from './longPress';
+import { boundsForPoints } from './mapFit';
 import { stretchesToGeoJson } from './mapLayers';
 import type { ZoneData } from './useZoneData';
 
@@ -20,6 +21,7 @@ export interface MapViewProps {
   highlightedZoneId: string | null;
   onLongPress: (p: LatLng) => void;
   recenterSignal: number;
+  fitTo?: { id: string; points: LatLng[] } | null;
 }
 
 // Vite does not emit MapLibre's worker file on its own (the default URL is
@@ -31,12 +33,14 @@ const LONG_PRESS_MS = 600;
 const LONG_PRESS_SLOP_PX = 10;
 const FOLLOW_ZOOM = 16;
 const HIGHLIGHT_ZOOM = 16;
-const TRIED_COLOR = '#9a9a9a';
-const CLUSTER_MAX_ZOOM = 16;
+const TRIED_COLOR = '#9e9e9e';
+const CLUSTER_MAX_ZOOM = 14;
 
 // One clustered GeoJSON source per kind, so every cluster bubble is single
 // coloured and blue/green are styled by the exact same expressions.
 const KINDS = ['visitor', 'resident'] as const;
+// Layer stack order, bottom to top: blue (visitor) is added last so it is never buried.
+const STACK_ORDER = ['resident', 'visitor'] as const;
 type Kind = (typeof KINDS)[number];
 const sourceId = (k: Kind) => `zones-${k}`;
 
@@ -81,6 +85,7 @@ export default function MapView({
   highlightedZoneId,
   onLongPress,
   recenterSignal,
+  fitTo = null,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -133,7 +138,7 @@ export default function MapView({
 
     map.on('load', () => {
       const empty: FeatureCollection = { type: 'FeatureCollection', features: [] };
-      for (const kind of KINDS) {
+      for (const kind of STACK_ORDER) {
         const color = madridConfig.kinds[kind].color;
         const src = sourceId(kind);
         map.addSource(src, {
@@ -176,10 +181,24 @@ export default function MapView({
           filter: ['!', ['has', 'point_count']],
           paint: {
             'circle-color': ['case', ['get', 'tried'], TRIED_COLOR, color],
-            'circle-radius': ['case', ['get', 'highlighted'], POINT_RADIUS + 4, POINT_RADIUS],
+            'circle-radius': [
+              'case',
+              ['get', 'highlighted'],
+              POINT_RADIUS + 4,
+              ['get', 'tried'],
+              POINT_RADIUS + 2,
+              POINT_RADIUS,
+            ],
             'circle-opacity': POINT_OPACITY,
-            'circle-stroke-width': ['case', ['get', 'highlighted'], 4, 1.5],
-            'circle-stroke-color': ['case', ['get', 'highlighted'], '#ffb300', '#ffffff'],
+            'circle-stroke-width': ['case', ['get', 'highlighted'], 4, ['get', 'tried'], 3, 1.5],
+            'circle-stroke-color': [
+              'case',
+              ['get', 'highlighted'],
+              '#ffb300',
+              ['get', 'tried'],
+              '#616161',
+              '#ffffff',
+            ],
           },
         });
       }
@@ -348,6 +367,34 @@ export default function MapView({
     recenterRef.current();
   }, [recenterSignal]);
 
+  // Fit: show origin + ranked + tried zones. Programmatic (no originalEvent),
+  // so it never reads as a user gesture; follow stays off until Recenter.
+  const fitId = fitTo?.id ?? null;
+  const fitPointsRef = useRef(fitTo?.points ?? []);
+  useEffect(() => {
+    fitPointsRef.current = fitTo?.points ?? [];
+  });
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || fitId === null) return;
+    const bounds = boundsForPoints(fitPointsRef.current);
+    if (!bounds) return;
+    const root = containerRef.current?.closest('main') ?? document;
+    const h = (sel: string) => root.querySelector<HTMLElement>(sel)?.offsetHeight ?? 0;
+    const margin = 32;
+    setFollow(false);
+    map.fitBounds(bounds, {
+      padding: {
+        top: h('.overlay-top') + margin,
+        bottom: h('[data-testid="overlay-bottom"]') + margin,
+        left: margin,
+        right: margin,
+      },
+      maxZoom: 17,
+      duration: 600,
+    });
+  }, [ready, fitId]);
+
   // Highlight: ease to the zone's target.
   useEffect(() => {
     const map = mapRef.current;
@@ -377,7 +424,7 @@ export default function MapView({
         style={{
           position: 'absolute',
           right: 12,
-          bottom: 24,
+          bottom: 'calc(var(--overlay-bottom-h, 0px) + 12px)',
           width: 48,
           height: 48,
           borderRadius: 24,
@@ -385,6 +432,7 @@ export default function MapView({
           background: '#ffffff',
           color: following ? '#1a73e8' : '#555555',
           fontSize: 24,
+          zIndex: 5,
           boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
           cursor: 'pointer',
         }}
