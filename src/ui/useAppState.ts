@@ -1,0 +1,88 @@
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { onAppReturn } from '../adapters/appVisibility';
+import { watchLocation } from '../adapters/location';
+import type { LocationStatus, Position } from '../adapters/location';
+import { loadSession, loadSettings, saveSession, saveSettings } from '../adapters/storage';
+import { madridConfig } from '../cities/madrid/config';
+import { rankCandidates } from '../core/ranking';
+import type { RankResult } from '../core/ranking';
+import { sessionReducer } from '../core/session';
+import type { SessionAction, SessionState, Settings } from '../core/types';
+import type { ZoneData } from './useZoneData';
+
+const TICK_MS = 60_000;
+const WIDEN_STEP_M = 1000;
+
+export function useAppState(data: ZoneData): {
+  session: SessionState;
+  settings: Settings;
+  position: Position | null;
+  locationStatus: LocationStatus;
+  ranked: RankResult;
+  radiiM: number[];
+  dispatch: (a: SessionAction) => void;
+  setSettings: (s: Settings) => void;
+  widen: () => void;
+} {
+  const [session, rawDispatch] = useReducer(sessionReducer, undefined, loadSession);
+  const [settings, setSettingsState] = useState<Settings>(loadSettings);
+  const [position, setPosition] = useState<Position | null>(null);
+  const [locationStatus, setLocationStatus] = useState<LocationStatus>('unknown');
+  const [radiiM, setRadiiM] = useState<number[]>(madridConfig.radiiM);
+
+  const first = useRef(true);
+  useEffect(() => {
+    // Skip the initial mount so a restored session is not re-written unchanged.
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    saveSession(session);
+  }, [session]);
+
+  const dispatch = useCallback((action: SessionAction) => {
+    if (action.type === 'start') setRadiiM(madridConfig.radiiM);
+    rawDispatch(action);
+  }, []);
+
+  const setSettings = useCallback((s: Settings) => {
+    setSettingsState(s);
+    saveSettings(s);
+  }, []);
+
+  const widen = useCallback(() => {
+    setRadiiM((r) => [...r, r[r.length - 1]! + WIDEN_STEP_M]);
+  }, []);
+
+  useEffect(() => watchLocation(setPosition, setLocationStatus), []);
+
+  useEffect(() => {
+    const tick = () => rawDispatch({ type: 'tick', now: Date.now() });
+    const id = setInterval(tick, TICK_MS);
+    const stop = onAppReturn(tick);
+    return () => {
+      clearInterval(id);
+      stop();
+    };
+  }, []);
+
+  const ranked = useMemo<RankResult>(() => {
+    if (session.origin === null || session.status === 'idle') return { ranked: [], radiusM: null };
+    return rankCandidates(session.origin.point, data.candidates, session.tried, {
+      radiiM,
+      maxResults: madridConfig.maxResults,
+    });
+  }, [session.origin, session.status, session.tried, data.candidates, radiiM]);
+
+  return {
+    session,
+    settings,
+    position,
+    locationStatus,
+    ranked,
+    radiiM,
+    dispatch,
+    setSettings,
+    widen,
+  };
+}
