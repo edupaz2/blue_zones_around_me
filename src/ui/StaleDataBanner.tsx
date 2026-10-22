@@ -3,14 +3,20 @@ interface Props {
   now: number;
 }
 
-// Rule: data is stale when sourceDate is strictly before (now minus 6 calendar
-// months), computed on a UTC copy via setUTCMonth. Invalid dates are never stale.
+// Rule: take the UTC calendar date of `now` (time of day ignored), subtract 6
+// calendar months, clamping the day to the target month's length (31 Aug ->
+// 28 Feb). Data is stale only when sourceDate is strictly before that cutoff
+// date, so exactly 6 months old is not stale. Invalid dates are never stale.
 export function isStale(sourceDate: string, now: number): boolean {
   const source = Date.parse(sourceDate);
   if (Number.isNaN(source)) return false;
-  const cutoff = new Date(now);
-  cutoff.setUTCMonth(cutoff.getUTCMonth() - 6);
-  return source < cutoff.getTime();
+  const n = new Date(now);
+  const month = n.getUTCMonth() - 6;
+  const year = n.getUTCFullYear();
+  // Day 0 of the following month = last day of the target month (handles year rollover).
+  const daysInTarget = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const cutoff = Date.UTC(year, month, Math.min(n.getUTCDate(), daysInTarget));
+  return source < cutoff;
 }
 
 export default function StaleDataBanner({ sourceDate, now }: Props) {

@@ -76,6 +76,7 @@ afterEach(() => {
   nav.openNavigation.mockReset();
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe('App data loading', () => {
@@ -388,6 +389,5 @@ describe('App settings', () => {
     render(<App />);
     await screen.findByTestId('app-ready');
     expect(screen.getByText(/Consider refreshing it/)).toBeInTheDocument();
-    vi.restoreAllMocks();
   });
 });
