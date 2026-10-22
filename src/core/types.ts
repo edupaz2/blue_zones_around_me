@@ -16,6 +16,21 @@ export interface Stretch {
   lng: number;
 }
 
+/** [west, south, east, north] in WGS84 degrees. */
+export type BBox = [west: number, south: number, east: number, north: number];
+
+export interface CityConfig {
+  id: string;
+  name: string;
+  center: LatLng;
+  bounds: BBox;
+  geocoderBbox: BBox;
+  kinds: Record<ZoneKind, { label: string; color: string }>;
+  groupingRadiusM: number;
+  radiiM: number[];
+  maxResults: number;
+}
+
 export interface CandidateZone {
   id: string;
   city: string;

@@ -1,0 +1,2 @@
+# Raw open-data fixtures: keep original bytes (Latin-1, CRLF).
+scripts/cities/*/fixtures/** -text
