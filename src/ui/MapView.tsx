@@ -6,6 +6,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import type { Position } from '../adapters/location';
 import { madridConfig } from '../cities/madrid/config';
 import type { LatLng, Settings } from '../core/types';
+import { createLongPress } from './longPress';
+import type { PressPoint } from './longPress';
 import { stretchesToGeoJson } from './mapLayers';
 import type { ZoneData } from './useZoneData';
 
@@ -221,44 +223,47 @@ export default function MapView({
       });
     }
 
-    // Long press (~600 ms, no significant movement) sets a destination.
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let start: { x: number; y: number } | null = null;
-    const cancel = () => {
-      clearTimeout(timer);
-      timer = undefined;
-      start = null;
+    // Long press (~600 ms, lone primary pointer, no significant movement).
+    const press = createLongPress(
+      (p) => {
+        const ll = map.unproject([p.x, p.y]);
+        onLongPressRef.current({ lat: ll.lat, lng: ll.lng });
+      },
+      { delayMs: LONG_PRESS_MS, slopPx: LONG_PRESS_SLOP_PX },
+    );
+    // Container-relative coordinates (for unproject); the slop is a delta.
+    const toPoint = (e: PointerEvent): PressPoint => {
+      const rect = container.getBoundingClientRect();
+      return {
+        pointerId: e.pointerId,
+        isPrimary: e.isPrimary,
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
     };
     const onDown = (e: PointerEvent) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
-      cancel();
-      const rect = container.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      start = { x: e.clientX, y: e.clientY };
-      timer = setTimeout(() => {
-        timer = undefined;
-        const ll = map.unproject([x, y]);
-        onLongPressRef.current({ lat: ll.lat, lng: ll.lng });
-      }, LONG_PRESS_MS);
+      press.down(toPoint(e));
     };
-    const onMove = (e: PointerEvent) => {
-      if (!start) return;
-      if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > LONG_PRESS_SLOP_PX) cancel();
-    };
+    const onMove = (e: PointerEvent) => press.move(toPoint(e));
+    const onUp = (e: PointerEvent) => press.up(e.pointerId);
+    const onCancel = () => press.cancel();
     container.addEventListener('pointerdown', onDown);
     container.addEventListener('pointermove', onMove);
-    container.addEventListener('pointerup', cancel);
-    container.addEventListener('pointercancel', cancel);
-    container.addEventListener('pointerleave', cancel);
+    container.addEventListener('pointerup', onUp);
+    container.addEventListener('pointercancel', onUp);
+    container.addEventListener('pointerleave', onCancel);
+    // Backstop: any map movement cancels a pending press.
+    map.on('movestart', onCancel);
+    map.on('dragstart', onCancel);
 
     return () => {
-      cancel();
+      press.reset();
       container.removeEventListener('pointerdown', onDown);
       container.removeEventListener('pointermove', onMove);
-      container.removeEventListener('pointerup', cancel);
-      container.removeEventListener('pointercancel', cancel);
-      container.removeEventListener('pointerleave', cancel);
+      container.removeEventListener('pointerup', onUp);
+      container.removeEventListener('pointercancel', onUp);
+      container.removeEventListener('pointerleave', onCancel);
       setReady(false);
       map.remove();
       mapRef.current = null;
