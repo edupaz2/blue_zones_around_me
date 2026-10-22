@@ -45,7 +45,11 @@ export default function CandidatePanel({
     <section className="panel" aria-label="Blue zones">
       <ul className="cards">
         {cards.map(({ zone, distanceM }) => (
-          <li key={zone.id} className={`card${zone.id === selectedId ? ' card-selected' : ''}`}>
+          <li
+            key={zone.id}
+            data-zone-id={zone.id}
+            className={`card${zone.id === selectedId ? ' card-selected' : ''}`}
+          >
             <button
               type="button"
               className="card-main"

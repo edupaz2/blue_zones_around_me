@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Map as MapLibreMap } from 'maplibre-gl';
+import { Map as MapLibreMap, setWorkerUrl } from 'maplibre-gl';
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import type { FeatureCollection } from 'geojson';
 import type { ExpressionSpecification, GeoJSONSource } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -20,6 +21,10 @@ export interface MapViewProps {
   onLongPress: (p: LatLng) => void;
   recenterSignal: number;
 }
+
+// Vite does not emit MapLibre's worker file on its own (the default URL is
+// import.meta-relative and 404s in the production build), so bundle it explicitly.
+setWorkerUrl(maplibreWorkerUrl);
 
 const STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 const LONG_PRESS_MS = 600;
