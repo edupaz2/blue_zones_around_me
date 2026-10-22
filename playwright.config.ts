@@ -9,6 +9,8 @@ const MADRID_SPOT = { latitude: 40.436893, longitude: -3.655012 };
 export default defineConfig({
   testDir: 'e2e',
   fullyParallel: false,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 1 : 0,
   reporter: 'list',
   use: {
     baseURL: 'http://localhost:4173',

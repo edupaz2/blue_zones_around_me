@@ -126,6 +126,10 @@ export default function MapView({
       attributionControl: { compact: true },
     });
     mapRef.current = map;
+    // Test-only debug hook; exposed solely when the URL carries ?e2e.
+    if (new URLSearchParams(window.location.search).has('e2e')) {
+      (window as unknown as { __bzaMap?: MapLibreMap }).__bzaMap = map;
+    }
 
     map.on('load', () => {
       const empty: FeatureCollection = { type: 'FeatureCollection', features: [] };
