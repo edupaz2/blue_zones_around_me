@@ -32,3 +32,24 @@ export interface Settings {
   showResident: boolean;
   navApp: 'google' | 'waze' | null;
 }
+
+export interface Origin {
+  mode: 'destination' | 'around';
+  point: LatLng;
+  label?: string;
+}
+
+export interface SessionState {
+  status: 'idle' | 'choosing' | 'driving';
+  origin: Origin | null;
+  zoneId: string | null;
+  tried: string[];
+  lastActivityAt: number;
+}
+
+export type SessionAction =
+  | { type: 'start'; origin: Origin; now: number }
+  | { type: 'go'; zoneId: string; now: number }
+  | { type: 'found'; now: number }
+  | { type: 'next'; now: number; origin?: Origin }
+  | { type: 'tick'; now: number };
