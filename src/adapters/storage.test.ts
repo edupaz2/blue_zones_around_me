@@ -93,6 +93,24 @@ describe('session storage', () => {
     }
   });
 
+  it('rejects inconsistent status/field combinations', () => {
+    const bad = [
+      { ...choosing, status: 'driving', zoneId: null },
+      { ...choosing, status: 'driving', zoneId: 'z3', origin: null },
+      { ...choosing, origin: null },
+    ];
+    for (const data of bad) {
+      localStorage.setItem('bza:v1:session', JSON.stringify({ v: 1, data }));
+      expect(loadSession()).toEqual(initialSession);
+    }
+  });
+
+  it('accepts idle with leftover origin and tried', () => {
+    const s: SessionState = { ...choosing, status: 'idle' };
+    saveSession(s);
+    expect(loadSession()).toEqual(s);
+  });
+
   it('does not throw when storage throws', () => {
     breakStorage();
     expect(loadSession()).toEqual(initialSession);

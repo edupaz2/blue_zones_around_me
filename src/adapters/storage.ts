@@ -36,7 +36,9 @@ function isSession(v: unknown): v is SessionState {
     (v.zoneId === null || typeof v.zoneId === 'string') &&
     Array.isArray(v.tried) &&
     v.tried.every((t) => typeof t === 'string') &&
-    isNum(v.lastActivityAt)
+    isNum(v.lastActivityAt) &&
+    (v.status === 'idle' || v.origin !== null) &&
+    (v.status !== 'driving' || typeof v.zoneId === 'string')
   );
 }
 
