@@ -7,7 +7,15 @@ import { useAppState } from './useAppState';
 import type { ZoneData } from './useZoneData';
 
 // MapLibre needs WebGL, which jsdom lacks.
-vi.mock('./MapView', () => ({ default: () => <div data-testid="map" /> }));
+const mapProps = vi.hoisted(() => ({
+  onLongPress: null as null | ((p: { lat: number; lng: number }) => void),
+}));
+vi.mock('./MapView', () => ({
+  default: (props: { onLongPress: (p: { lat: number; lng: number }) => void }) => {
+    mapProps.onLongPress = props.onLongPress;
+    return <div data-testid="map" />;
+  },
+}));
 
 vi.mock('../adapters/geocoder', () => ({
   searchPlaces: vi.fn(() =>
@@ -102,6 +110,26 @@ describe('App search flow', () => {
     expect(await screen.findByRole('region', { name: 'Blue zones' })).toBeInTheDocument();
     expect(screen.getAllByRole('listitem').length).toBeGreaterThan(0);
     expect(localStorage.getItem('bza:v1:session')).toContain('destination');
+  });
+});
+
+describe('App long-press', () => {
+  it('out-of-bounds long-press shows an alert and starts nothing', async () => {
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByTestId('app-ready');
+    act(() => mapProps.onLongPress!({ lat: 41.4, lng: 2.17 }));
+    expect(screen.getByText('That point is outside the Madrid SER area')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Blue zones' })).not.toBeInTheDocument();
+    expect(localStorage.getItem('bza:v1:session') ?? '').not.toContain('choosing');
+  });
+
+  it('in-bounds long-press starts a destination session', async () => {
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByTestId('app-ready');
+    act(() => mapProps.onLongPress!({ lat: 40.4168, lng: -3.7038 }));
+    expect(await screen.findByRole('region', { name: 'Blue zones' })).toBeInTheDocument();
   });
 });
 

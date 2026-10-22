@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { RankResult } from '../core/ranking';
 import type { CandidateZone } from '../core/types';
-import CandidatePanel from './CandidatePanel';
+import CandidatePanel, { formatDistance } from './CandidatePanel';
 
 afterEach(cleanup);
 
@@ -31,7 +31,23 @@ function setup(r: RankResult = result, mode: 'destination' | 'around' = 'destina
   return fns;
 }
 
+describe('formatDistance', () => {
+  it.each([
+    [999, '999 m'],
+    [999.6, '1.0 km'],
+    [1000, '1.0 km'],
+    [1250, '1.3 km'],
+  ])('%s -> %s', (m, expected) => {
+    expect(formatDistance(m)).toBe(expected);
+  });
+});
+
 describe('CandidatePanel', () => {
+  it('falls back to the neighbourhood when a zone has no streets', () => {
+    setup({ radiusM: 800, ranked: [{ zone: zone('n', [], 4), distanceM: 100 }] });
+    expect(screen.getByRole('button', { name: 'Show Centro on map' })).toBeInTheDocument();
+  });
+
   it('renders three cards with name, spaces and formatted distance', () => {
     setup();
     expect(screen.getAllByRole('listitem')).toHaveLength(3);

@@ -11,10 +11,12 @@ interface Props {
 }
 
 export function formatDistance(m: number): string {
-  return m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1)} km`;
+  const r = Math.round(m);
+  return r < 1000 ? `${r} m` : `${(m / 1000).toFixed(1)} km`;
 }
 
 function zoneName(zone: CandidateZone): string {
+  if (zone.streets.length === 0) return zone.neighbourhood;
   const shown = zone.streets.slice(0, 2).join(', ');
   const more = zone.streets.length - 2;
   return more > 0 ? `${shown} +${more} more` : shown;
