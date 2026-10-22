@@ -6,6 +6,9 @@ import App from '../App';
 import { useAppState } from './useAppState';
 import type { ZoneData } from './useZoneData';
 
+// MapLibre needs WebGL, which jsdom lacks.
+vi.mock('./MapView', () => ({ default: () => <div data-testid="map" /> }));
+
 const stretch: Stretch = {
   id: 's1',
   city: 'madrid',
