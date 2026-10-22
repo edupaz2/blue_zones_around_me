@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "format": "prettier --check .",
     "test": "vitest run",
     "test:e2e": "echo 'e2e wired in a later task'",
     "data:madrid": "echo 'data pipeline wired in a later task'"
