@@ -1,0 +1,129 @@
+.overlay-top,
+.overlay-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding: 8px 12px;
+  pointer-events: none;
+  font-family: system-ui, sans-serif;
+}
+.overlay-top > *,
+.overlay-bottom > * {
+  pointer-events: auto;
+}
+.overlay-top {
+  top: 0;
+  padding-top: max(8px, env(safe-area-inset-top));
+}
+.overlay-bottom {
+  bottom: 0;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.search-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 0 14px;
+  font-size: 16px;
+  border: 1px solid #bbb;
+  border-radius: 12px;
+  background: #fff;
+}
+.suggestions {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.suggestion {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  text-align: left;
+  font-size: 16px;
+  border: 0;
+  border-bottom: 1px solid #eee;
+  background: #fff;
+}
+.note {
+  margin: 6px 0 0;
+  padding: 8px 12px;
+  font-size: 14px;
+  background: #fff;
+  border-radius: 10px;
+}
+.btn {
+  min-height: 48px;
+  min-width: 48px;
+  padding: 0 18px;
+  font-size: 16px;
+  border: 0;
+  border-radius: 12px;
+  background: #ddd;
+}
+.btn-primary {
+  background: #1f6feb;
+  color: #fff;
+}
+.btn:disabled {
+  background: #ccc;
+  color: #666;
+}
+.btn-around {
+  width: 100%;
+}
+.panel {
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  padding: 12px;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.2);
+}
+.panel-empty {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+.cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.card {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  border: 2px solid transparent;
+  border-radius: 12px;
+}
+.card-selected {
+  border-color: #1f6feb;
+}
+.card-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 48px;
+  padding: 8px 10px;
+  text-align: left;
+  border: 0;
+  border-radius: 10px;
+  background: #f3f4f6;
+}
+.card-name {
+  font-weight: 600;
+}
+.card-sub,
+.card-meta {
+  font-size: 14px;
+  color: #444;
+}

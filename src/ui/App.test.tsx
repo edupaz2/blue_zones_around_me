@@ -9,6 +9,12 @@ import type { ZoneData } from './useZoneData';
 // MapLibre needs WebGL, which jsdom lacks.
 vi.mock('./MapView', () => ({ default: () => <div data-testid="map" /> }));
 
+vi.mock('../adapters/geocoder', () => ({
+  searchPlaces: vi.fn(() =>
+    Promise.resolve([{ label: 'Puerta del Sol', point: { lat: 40.4168, lng: -3.7038 } }]),
+  ),
+}));
+
 const stretch: Stretch = {
   id: 's1',
   city: 'madrid',
@@ -82,6 +88,20 @@ describe('App data loading', () => {
     );
     render(<App />);
     expect(await screen.findByText("Couldn't load zone data")).toBeInTheDocument();
+  });
+});
+
+describe('App search flow', () => {
+  it('selecting a search result starts a session and shows the panel', async () => {
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByTestId('app-ready');
+    expect(screen.queryByRole('region', { name: 'Blue zones' })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'sol' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Puerta del Sol' }));
+    expect(await screen.findByRole('region', { name: 'Blue zones' })).toBeInTheDocument();
+    expect(screen.getAllByRole('listitem').length).toBeGreaterThan(0);
+    expect(localStorage.getItem('bza:v1:session')).toContain('destination');
   });
 });
 
