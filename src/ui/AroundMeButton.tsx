@@ -27,7 +27,12 @@ export default function AroundMeButton({ position, locationStatus, onPress }: Pr
 
   return (
     <div className="around">
-      <button type="button" className="btn btn-primary btn-around" disabled={disabled} onClick={press}>
+      <button
+        type="button"
+        className="btn btn-primary btn-around"
+        disabled={disabled}
+        onClick={press}
+      >
         Around me
       </button>
       {blocked && (

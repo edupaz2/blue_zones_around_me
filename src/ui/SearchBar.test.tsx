@@ -35,9 +35,7 @@ describe('SearchBar', () => {
 
   it('ignores a stale slow response arriving after a later query', async () => {
     const resolvers: Array<(r: GeoResult[]) => void> = [];
-    const search = vi.fn(
-      () => new Promise<GeoResult[]>((resolve) => resolvers.push(resolve)),
-    );
+    const search = vi.fn(() => new Promise<GeoResult[]>((resolve) => resolvers.push(resolve)));
     render(<SearchBar onSelect={vi.fn()} search={search} />);
     await type('aaa');
     await type('bbb');

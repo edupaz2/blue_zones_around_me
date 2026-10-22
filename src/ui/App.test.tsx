@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { saveSession } from '../adapters/storage';
-import type { CandidateZone, Stretch } from '../core/types';
+import { loadSession, loadSettings, saveSession, saveSettings } from '../adapters/storage';
+import type { CandidateZone, SessionState, Stretch } from '../core/types';
 import App from '../App';
 import { useAppState } from './useAppState';
 import type { ZoneData } from './useZoneData';
@@ -9,10 +9,17 @@ import type { ZoneData } from './useZoneData';
 // MapLibre needs WebGL, which jsdom lacks.
 const mapProps = vi.hoisted(() => ({
   onLongPress: null as null | ((p: { lat: number; lng: number }) => void),
+  highlightedZoneId: undefined as string | null | undefined,
 }));
+const nav = vi.hoisted(() => ({ openNavigation: vi.fn() }));
+vi.mock('./openNavigation', () => nav);
 vi.mock('./MapView', () => ({
-  default: (props: { onLongPress: (p: { lat: number; lng: number }) => void }) => {
+  default: (props: {
+    onLongPress: (p: { lat: number; lng: number }) => void;
+    highlightedZoneId: string | null;
+  }) => {
     mapProps.onLongPress = props.onLongPress;
+    mapProps.highlightedZoneId = props.highlightedZoneId;
     return <div data-testid="map" />;
   },
 }));
@@ -63,6 +70,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  nav.openNavigation.mockReset();
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
@@ -121,7 +129,7 @@ describe('App long-press', () => {
     act(() => mapProps.onLongPress!({ lat: 41.4, lng: 2.17 }));
     expect(screen.getByText('That point is outside the Madrid SER area')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Blue zones' })).not.toBeInTheDocument();
-    expect(localStorage.getItem('bza:v1:session') ?? '').not.toContain('choosing');
+    expect(localStorage.getItem('bza:v1:session') ?? '').not.toContain('destination');
   });
 
   it('in-bounds long-press starts a destination session', async () => {
@@ -200,5 +208,157 @@ describe('useAppState', () => {
       vi.advanceTimersByTime(60_000);
     });
     expect(screen.getByTestId('status')).toHaveTextContent('idle');
+  });
+});
+
+const here = { lat: 40.4168, lng: -3.7038 };
+const sessionOf = (over: Partial<SessionState>): SessionState => ({
+  status: 'choosing',
+  origin: { mode: 'around', point: here },
+  zoneId: null,
+  tried: [],
+  lastActivityAt: Date.now(),
+  ...over,
+});
+const storedSession = loadSession;
+
+describe('useAppState mount tick', () => {
+  it('expires a restored session older than 90 minutes immediately', () => {
+    saveSession(sessionOf({ lastActivityAt: Date.now() - 91 * 60 * 1000 }));
+    render(<Probe />);
+    expect(screen.getByTestId('status')).toHaveTextContent('idle');
+  });
+});
+
+describe('App go flow', () => {
+  it('first Go shows the chooser, dispatches go before opening, and saves the choice', async () => {
+    saveSession(sessionOf({}));
+    vi.stubGlobal('fetch', mockFetchOk());
+    let persistedAtOpen: string | null = null;
+    nav.openNavigation.mockImplementation(() => {
+      persistedAtOpen = localStorage.getItem('bza:v1:session');
+    });
+    render(<App />);
+    await screen.findByRole('region', { name: 'Blue zones' });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Go' })[0]!);
+    expect(nav.openNavigation).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Waze' }));
+    expect(nav.openNavigation).toHaveBeenCalledTimes(1);
+    expect(nav.openNavigation.mock.calls[0]![0]).toMatch(/^https:\/\/waze\.com\/ul\?ll=/);
+    expect(persistedAtOpen).toContain('driving');
+    expect(loadSettings().navApp).toBe('waze');
+    expect(screen.getByText('Found a spot?')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Blue zones' })).not.toBeInTheDocument();
+  });
+
+  it('a saved app skips the chooser', async () => {
+    saveSettings({ showVisitor: true, showResident: true, navApp: 'google' });
+    saveSession(sessionOf({}));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByRole('region', { name: 'Blue zones' });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Go' })[0]!);
+    expect(screen.queryByText('Navigate with')).not.toBeInTheDocument();
+    expect(nav.openNavigation.mock.calls[0]![0]).toContain(
+      'https://www.google.com/maps/dir/?api=1&destination=',
+    );
+  });
+});
+
+describe('App reload survival and found-a-spot', () => {
+  it('restored driving session shows the prompt, not the panel', async () => {
+    saveSession(sessionOf({ status: 'driving', zoneId: 'z1' }));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    expect(await screen.findByText('Found a spot?')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Blue zones' })).not.toBeInTheDocument();
+  });
+
+  it('restored choosing session shows the candidate panel', async () => {
+    saveSession(sessionOf({}));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    expect(await screen.findByRole('region', { name: 'Blue zones' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Go' }).length).toBeGreaterThan(0);
+  });
+
+  it('prompt stays when the app returns to the foreground while driving', async () => {
+    saveSession(sessionOf({ status: 'driving', zoneId: 'z1' }));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByText('Found a spot?');
+    act(() => {
+      window.dispatchEvent(new Event('pageshow'));
+    });
+    expect(screen.getByText('Found a spot?')).toBeInTheDocument();
+  });
+
+  it('Yes ends the session', async () => {
+    saveSession(sessionOf({ status: 'driving', zoneId: 'z1' }));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes' }));
+    expect(screen.queryByText('Found a spot?')).not.toBeInTheDocument();
+    expect(storedSession().status).toBe('idle');
+  });
+
+  it('No, next zone in around mode uses a fresh origin from the current position', async () => {
+    const fresh = { lat: 40.419, lng: -3.7038 };
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      geolocation: {
+        watchPosition: (ok: (p: unknown) => void) => {
+          ok({ coords: { latitude: fresh.lat, longitude: fresh.lng, accuracy: 5 } });
+          return 1;
+        },
+        clearWatch: () => {},
+      },
+    });
+    saveSession(sessionOf({ status: 'driving', zoneId: 'z1' }));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    const no = await screen.findByRole('button', { name: 'No, next zone' });
+    await act(async () => {}); // let the position set by the watch effect render
+    fireEvent.click(no);
+    const s = storedSession();
+    expect(s.status).toBe('choosing');
+    expect(s.tried).toEqual(['z1']);
+    expect(s.origin).toEqual({ mode: 'around', point: fresh });
+  });
+
+  it('No, next zone without a position keeps the previous origin', async () => {
+    saveSession(sessionOf({ status: 'driving', zoneId: 'z1' }));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'No, next zone' }));
+    expect(storedSession().origin).toEqual({ mode: 'around', point: here });
+  });
+
+  it('No, next zone in destination mode keeps the origin', async () => {
+    const dest = { mode: 'destination' as const, point: here, label: 'Puerta del Sol' };
+    saveSession(sessionOf({ status: 'driving', zoneId: 'z1', origin: dest }));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'No, next zone' }));
+    expect(storedSession().origin).toEqual(dest);
+  });
+
+  it('after next the tried zone is gone from the list and the highlight is cleared', async () => {
+    saveSettings({ showVisitor: true, showResident: true, navApp: 'google' });
+    saveSession(sessionOf({}));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByRole('region', { name: 'Blue zones' });
+    const first = screen.getAllByRole('listitem')[0]!;
+    fireEvent.click(first.querySelector('.card-main') as HTMLElement);
+    const selected = mapProps.highlightedZoneId;
+    expect(selected).toBeTruthy();
+    const before = screen.getAllByRole('listitem').length;
+    fireEvent.click(first.querySelector('.btn-primary') as HTMLElement);
+    fireEvent.click(screen.getByRole('button', { name: 'No, next zone' }));
+    await screen.findByRole('region', { name: 'Blue zones' });
+    expect(screen.getAllByRole('listitem').length).toBe(before - 1);
+    expect(storedSession().tried).toEqual([selected]);
+    expect(mapProps.highlightedZoneId).toBeNull();
   });
 });

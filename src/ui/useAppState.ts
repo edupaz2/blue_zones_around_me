@@ -30,20 +30,26 @@ export function useAppState(data: ZoneData): {
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('unknown');
   const [radiiM, setRadiiM] = useState<number[]>(madridConfig.radiiM);
 
-  const first = useRef(true);
-  useEffect(() => {
-    // Skip the initial mount so a restored session is not re-written unchanged.
-    if (first.current) {
-      first.current = false;
-      return;
+  // Mirror of the reducer state so every transition can be persisted synchronously,
+  // before any follow-up side effect (e.g. opening the nav app, after which iOS may
+  // suspend or reload the page before a post-render effect would have run).
+  const sessionRef = useRef(session);
+  const apply = useCallback((action: SessionAction) => {
+    const next = sessionReducer(sessionRef.current, action);
+    if (next !== sessionRef.current) {
+      sessionRef.current = next;
+      saveSession(next);
     }
-    saveSession(session);
-  }, [session]);
-
-  const dispatch = useCallback((action: SessionAction) => {
-    if (action.type === 'start') setRadiiM(madridConfig.radiiM);
     rawDispatch(action);
   }, []);
+
+  const dispatch = useCallback(
+    (action: SessionAction) => {
+      if (action.type === 'start') setRadiiM(madridConfig.radiiM);
+      apply(action);
+    },
+    [apply],
+  );
 
   const setSettings = useCallback((s: Settings) => {
     setSettingsState(s);
@@ -57,14 +63,16 @@ export function useAppState(data: ZoneData): {
   useEffect(() => watchLocation(setPosition, setLocationStatus), []);
 
   useEffect(() => {
-    const tick = () => rawDispatch({ type: 'tick', now: Date.now() });
+    const tick = () => apply({ type: 'tick', now: Date.now() });
+    // Expire a stale restored session right away instead of up to a minute later.
+    tick();
     const id = setInterval(tick, TICK_MS);
     const stop = onAppReturn(tick);
     return () => {
       clearInterval(id);
       stop();
     };
-  }, []);
+  }, [apply]);
 
   const ranked = useMemo<RankResult>(() => {
     if (session.origin === null || session.status === 'idle') return { ranked: [], radiusM: null };

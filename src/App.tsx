@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { madridConfig } from './cities/madrid/config';
 import { inBounds } from './core/bounds';
+import { buildNavigationUrl } from './core/handoff';
 import type { LatLng } from './core/types';
 import AroundMeButton from './ui/AroundMeButton';
 import CandidatePanel from './ui/CandidatePanel';
+import FoundSpotPrompt from './ui/FoundSpotPrompt';
 import MapView from './ui/MapView';
+import NavAppChooser from './ui/NavAppChooser';
+import { openNavigation } from './ui/openNavigation';
 import SearchBar from './ui/SearchBar';
 import { useAppState } from './ui/useAppState';
 import { useZoneData } from './ui/useZoneData';
@@ -12,9 +16,12 @@ import type { ZoneData } from './ui/useZoneData';
 import './ui/ui.css';
 
 function Ready({ data }: { data: ZoneData }) {
-  const { session, settings, position, locationStatus, ranked, dispatch, widen } =
+  const { session, settings, position, locationStatus, ranked, dispatch, setSettings, widen } =
     useAppState(data);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [pickedId, setSelectedId] = useState<string | null>(null);
+  const [pendingGoId, setPendingGoId] = useState<string | null>(null);
+  // Derived: a selection only counts while that zone is still in the list.
+  const selectedId = ranked.ranked.some((r) => r.zone.id === pickedId) ? pickedId : null;
   const [pointError, setPointError] = useState(false);
 
   const startDestination = (point: LatLng, label: string) => {
@@ -29,6 +36,34 @@ function Ready({ data }: { data: ZoneData }) {
       return;
     }
     startDestination(p, 'Selected point');
+  };
+
+  const launch = (zoneId: string, app: 'google' | 'waze') => {
+    const zone = data.candidates.find((z) => z.id === zoneId);
+    if (!zone) return;
+    // Persist the driving state first: iOS may reload the PWA once the nav app opens.
+    dispatch({ type: 'go', zoneId, now: Date.now() });
+    openNavigation(buildNavigationUrl(app, zone.target));
+  };
+
+  const onGo = (zoneId: string) => {
+    if (settings.navApp === null) setPendingGoId(zoneId);
+    else launch(zoneId, settings.navApp);
+  };
+
+  const onChooseApp = (app: 'google' | 'waze') => {
+    const zoneId = pendingGoId;
+    setPendingGoId(null);
+    setSettings({ ...settings, navApp: app });
+    if (zoneId !== null) launch(zoneId, app);
+  };
+
+  const onNext = () => {
+    const origin =
+      session.origin?.mode === 'around' && position
+        ? { mode: 'around' as const, point: position.point }
+        : undefined;
+    dispatch({ type: 'next', now: Date.now(), origin });
   };
 
   return (
@@ -57,8 +92,7 @@ function Ready({ data }: { data: ZoneData }) {
             mode={session.origin.mode}
             selectedId={selectedId}
             onSelect={setSelectedId}
-            // TODO(Task 14): implement Go / navigation hand-off.
-            onGo={() => {}}
+            onGo={onGo}
             onWiden={widen}
           />
         )}
@@ -72,6 +106,13 @@ function Ready({ data }: { data: ZoneData }) {
           }}
         />
       </div>
+      {session.status === 'driving' && (
+        <FoundSpotPrompt
+          onFound={() => dispatch({ type: 'found', now: Date.now() })}
+          onNext={onNext}
+        />
+      )}
+      {pendingGoId !== null && <NavAppChooser onChoose={onChooseApp} />}
     </main>
   );
 }

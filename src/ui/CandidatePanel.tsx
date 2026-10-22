@@ -56,8 +56,7 @@ export default function CandidatePanel({
               <span className="card-name">{zoneName(zone)}</span>
               <span className="card-sub">{zone.neighbourhood}</span>
               <span className="card-meta">
-                {zone.totalSpaces} blue spaces ·{' '}
-                <span>{formatDistance(distanceM)}</span>{' '}
+                {zone.totalSpaces} blue spaces · <span>{formatDistance(distanceM)}</span>{' '}
                 {mode === 'around' ? 'from you' : 'from destination'}
               </span>
             </button>
