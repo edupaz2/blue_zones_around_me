@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import basicSsl from '@vitejs/plugin-basic-ssl';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // GitHub Pages serves the repo under /blue_zones_around_me/; CI sets VITE_BASE.
@@ -10,6 +11,8 @@ export default defineConfig({
   base,
   plugins: [
     react(),
+    // Opt-in local HTTPS for phone testing (geolocation needs a secure context).
+    ...(process.env.HTTPS === '1' ? [basicSsl()] : []),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
