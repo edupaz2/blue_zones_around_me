@@ -10,6 +10,7 @@ import type { LatLng, Settings } from '../core/types';
 import { createLongPress } from './longPress';
 import type { PressPoint } from './longPress';
 import { boundsForPoints } from './mapFit';
+import { FALLBACK_STYLE, resolveStyle } from './mapStyle';
 import { stretchesToGeoJson } from './mapLayers';
 import type { ZoneData } from './useZoneData';
 
@@ -123,179 +124,206 @@ export default function MapView({
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    const map = new MapLibreMap({
-      container,
-      style: STYLE_URL,
-      center: [madridConfig.center.lng, madridConfig.center.lat],
-      zoom: 13,
-      attributionControl: { compact: true },
+    let cancelled = false;
+    let cleanup: (() => void) | undefined;
+    void resolveStyle(STYLE_URL).then(({ style, fallback }) => {
+      if (!cancelled) cleanup = init(container, style, fallback);
     });
-    mapRef.current = map;
-    // Test-only debug hook; exposed solely when the URL carries ?e2e.
-    if (new URLSearchParams(window.location.search).has('e2e')) {
-      (window as unknown as { __bzaMap?: MapLibreMap }).__bzaMap = map;
-    }
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
 
-    map.on('load', () => {
-      const empty: FeatureCollection = { type: 'FeatureCollection', features: [] };
-      for (const kind of STACK_ORDER) {
-        const color = madridConfig.kinds[kind].color;
-        const src = sourceId(kind);
-        map.addSource(src, {
-          type: 'geojson',
-          data: empty,
-          cluster: true,
-          clusterMaxZoom: CLUSTER_MAX_ZOOM,
-          clusterRadius: 45,
+    function init(container: HTMLDivElement, style: string | object, startFallback: boolean) {
+      // Fallback mode (blank style): no glyphs, so label layers are skipped.
+      let fallbackMode = startFallback;
+      let setupDone = false;
+      const map = new MapLibreMap({
+        container,
+        style: style as string,
+        center: [madridConfig.center.lng, madridConfig.center.lat],
+        zoom: 13,
+        attributionControl: { compact: true },
+      });
+      mapRef.current = map;
+      // Test-only debug hook; exposed solely when the URL carries ?e2e.
+      if (new URLSearchParams(window.location.search).has('e2e')) {
+        (window as unknown as { __bzaMap?: MapLibreMap }).__bzaMap = map;
+      }
+
+      const setup = () => {
+        if (setupDone) return;
+        setupDone = true;
+        const empty: FeatureCollection = { type: 'FeatureCollection', features: [] };
+        for (const kind of STACK_ORDER) {
+          const color = madridConfig.kinds[kind].color;
+          const src = sourceId(kind);
+          map.addSource(src, {
+            type: 'geojson',
+            data: empty,
+            cluster: true,
+            clusterMaxZoom: CLUSTER_MAX_ZOOM,
+            clusterRadius: 45,
+          });
+          map.addLayer({
+            id: `${src}-clusters`,
+            type: 'circle',
+            source: src,
+            filter: ['has', 'point_count'],
+            paint: {
+              'circle-color': color,
+              'circle-radius': CLUSTER_RADIUS,
+              'circle-opacity': POINT_OPACITY,
+              'circle-stroke-width': 2,
+              'circle-stroke-color': '#ffffff',
+            },
+          });
+          if (!fallbackMode)
+            map.addLayer({
+              id: `${src}-count`,
+              type: 'symbol',
+              source: src,
+              filter: ['has', 'point_count'],
+              layout: {
+                'text-field': ['get', 'point_count_abbreviated'],
+                'text-size': 12,
+                'text-font': ['Noto Sans Bold'],
+                'text-allow-overlap': true,
+              },
+              paint: { 'text-color': '#ffffff' },
+            });
+          map.addLayer({
+            id: `${src}-points`,
+            type: 'circle',
+            source: src,
+            filter: ['!', ['has', 'point_count']],
+            paint: {
+              'circle-color': ['case', ['get', 'tried'], TRIED_COLOR, color],
+              'circle-radius': [
+                'case',
+                ['get', 'highlighted'],
+                POINT_RADIUS + 4,
+                ['get', 'tried'],
+                POINT_RADIUS + 2,
+                POINT_RADIUS,
+              ],
+              'circle-opacity': POINT_OPACITY,
+              'circle-stroke-width': ['case', ['get', 'highlighted'], 4, ['get', 'tried'], 3, 1.5],
+              'circle-stroke-color': [
+                'case',
+                ['get', 'highlighted'],
+                '#ffb300',
+                ['get', 'tried'],
+                '#616161',
+                '#ffffff',
+              ],
+            },
+          });
+        }
+        map.addSource('user', { type: 'geojson', data: empty });
+        map.addLayer({
+          id: 'user-accuracy',
+          type: 'circle',
+          source: 'user',
+          paint: {
+            'circle-color': '#1a73e8',
+            'circle-opacity': 0.15,
+            'circle-radius': accuracyRadius(0, madridConfig.center.lat),
+            'circle-stroke-width': 1,
+            'circle-stroke-color': '#1a73e8',
+            'circle-stroke-opacity': 0.4,
+          },
         });
         map.addLayer({
-          id: `${src}-clusters`,
+          id: 'user-dot',
           type: 'circle',
-          source: src,
-          filter: ['has', 'point_count'],
+          source: 'user',
           paint: {
-            'circle-color': color,
-            'circle-radius': CLUSTER_RADIUS,
-            'circle-opacity': POINT_OPACITY,
-            'circle-stroke-width': 2,
+            'circle-color': '#1a73e8',
+            'circle-radius': 8,
+            'circle-stroke-width': 3,
             'circle-stroke-color': '#ffffff',
           },
         });
-        map.addLayer({
-          id: `${src}-count`,
-          type: 'symbol',
-          source: src,
-          filter: ['has', 'point_count'],
-          layout: {
-            'text-field': ['get', 'point_count_abbreviated'],
-            'text-size': 12,
-            'text-font': ['Noto Sans Bold'],
-            'text-allow-overlap': true,
-          },
-          paint: { 'text-color': '#ffffff' },
-        });
-        map.addLayer({
-          id: `${src}-points`,
-          type: 'circle',
-          source: src,
-          filter: ['!', ['has', 'point_count']],
-          paint: {
-            'circle-color': ['case', ['get', 'tried'], TRIED_COLOR, color],
-            'circle-radius': [
-              'case',
-              ['get', 'highlighted'],
-              POINT_RADIUS + 4,
-              ['get', 'tried'],
-              POINT_RADIUS + 2,
-              POINT_RADIUS,
-            ],
-            'circle-opacity': POINT_OPACITY,
-            'circle-stroke-width': ['case', ['get', 'highlighted'], 4, ['get', 'tried'], 3, 1.5],
-            'circle-stroke-color': [
-              'case',
-              ['get', 'highlighted'],
-              '#ffb300',
-              ['get', 'tried'],
-              '#616161',
-              '#ffffff',
-            ],
-          },
+        setReady(true);
+      };
+      map.on('load', setup);
+      // Style failed before load (e.g. tile server down): switch to the blank style.
+      map.on('error', (e) => {
+        if (setupDone || fallbackMode || (e as { tile?: unknown }).tile) return;
+        fallbackMode = true;
+        map.setStyle(FALLBACK_STYLE);
+        map.once('style.load', setup);
+      });
+
+      // Only user gestures carry an originalEvent; programmatic easeTo does not.
+      const stopFollowing = (e: { originalEvent?: unknown }) => {
+        if (e.originalEvent) setFollow(false);
+      };
+      map.on('dragstart', stopFollowing);
+      map.on('zoomstart', stopFollowing);
+
+      // Click a cluster to zoom in.
+      for (const kind of KINDS) {
+        map.on('click', `${sourceId(kind)}-clusters`, (e) => {
+          const f = e.features?.[0];
+          if (!f || f.geometry.type !== 'Point') return;
+          const src = map.getSource<GeoJSONSource>(sourceId(kind));
+          const clusterId = f.properties?.cluster_id as number;
+          const [lng, lat] = f.geometry.coordinates as [number, number];
+          setFollow(false);
+          void src?.getClusterExpansionZoom(clusterId).then((zoom) => {
+            map.easeTo({ center: [lng, lat], zoom });
+          });
         });
       }
-      map.addSource('user', { type: 'geojson', data: empty });
-      map.addLayer({
-        id: 'user-accuracy',
-        type: 'circle',
-        source: 'user',
-        paint: {
-          'circle-color': '#1a73e8',
-          'circle-opacity': 0.15,
-          'circle-radius': accuracyRadius(0, madridConfig.center.lat),
-          'circle-stroke-width': 1,
-          'circle-stroke-color': '#1a73e8',
-          'circle-stroke-opacity': 0.4,
+
+      // Long press (~600 ms, lone primary pointer, no significant movement).
+      const press = createLongPress(
+        (p) => {
+          const ll = map.unproject([p.x, p.y]);
+          onLongPressRef.current({ lat: ll.lat, lng: ll.lng });
         },
-      });
-      map.addLayer({
-        id: 'user-dot',
-        type: 'circle',
-        source: 'user',
-        paint: {
-          'circle-color': '#1a73e8',
-          'circle-radius': 8,
-          'circle-stroke-width': 3,
-          'circle-stroke-color': '#ffffff',
-        },
-      });
-      setReady(true);
-    });
-
-    // Only user gestures carry an originalEvent; programmatic easeTo does not.
-    const stopFollowing = (e: { originalEvent?: unknown }) => {
-      if (e.originalEvent) setFollow(false);
-    };
-    map.on('dragstart', stopFollowing);
-    map.on('zoomstart', stopFollowing);
-
-    // Click a cluster to zoom in.
-    for (const kind of KINDS) {
-      map.on('click', `${sourceId(kind)}-clusters`, (e) => {
-        const f = e.features?.[0];
-        if (!f || f.geometry.type !== 'Point') return;
-        const src = map.getSource<GeoJSONSource>(sourceId(kind));
-        const clusterId = f.properties?.cluster_id as number;
-        const [lng, lat] = f.geometry.coordinates as [number, number];
-        void src?.getClusterExpansionZoom(clusterId).then((zoom) => {
-          map.easeTo({ center: [lng, lat], zoom });
-        });
-      });
-    }
-
-    // Long press (~600 ms, lone primary pointer, no significant movement).
-    const press = createLongPress(
-      (p) => {
-        const ll = map.unproject([p.x, p.y]);
-        onLongPressRef.current({ lat: ll.lat, lng: ll.lng });
-      },
-      { delayMs: LONG_PRESS_MS, slopPx: LONG_PRESS_SLOP_PX },
-    );
-    // Container-relative coordinates (for unproject); the slop is a delta.
-    const toPoint = (e: PointerEvent): PressPoint => {
-      const rect = container.getBoundingClientRect();
-      return {
-        pointerId: e.pointerId,
-        isPrimary: e.isPrimary,
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
+        { delayMs: LONG_PRESS_MS, slopPx: LONG_PRESS_SLOP_PX },
+      );
+      // Container-relative coordinates (for unproject); the slop is a delta.
+      const toPoint = (e: PointerEvent): PressPoint => {
+        const rect = container.getBoundingClientRect();
+        return {
+          pointerId: e.pointerId,
+          isPrimary: e.isPrimary,
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top,
+        };
       };
-    };
-    const onDown = (e: PointerEvent) => {
-      if (e.pointerType === 'mouse' && e.button !== 0) return;
-      press.down(toPoint(e));
-    };
-    const onMove = (e: PointerEvent) => press.move(toPoint(e));
-    const onUp = (e: PointerEvent) => press.up(e.pointerId);
-    const onCancel = () => press.cancel();
-    container.addEventListener('pointerdown', onDown);
-    container.addEventListener('pointermove', onMove);
-    container.addEventListener('pointerup', onUp);
-    container.addEventListener('pointercancel', onUp);
-    container.addEventListener('pointerleave', onCancel);
-    // Backstop: any map movement cancels a pending press.
-    map.on('movestart', onCancel);
-    map.on('dragstart', onCancel);
+      const onDown = (e: PointerEvent) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        press.down(toPoint(e));
+      };
+      const onMove = (e: PointerEvent) => press.move(toPoint(e));
+      const onUp = (e: PointerEvent) => press.up(e.pointerId);
+      const onCancel = () => press.cancel();
+      container.addEventListener('pointerdown', onDown);
+      container.addEventListener('pointermove', onMove);
+      container.addEventListener('pointerup', onUp);
+      container.addEventListener('pointercancel', onUp);
+      container.addEventListener('pointerleave', onCancel);
+      // Backstop: any map movement cancels a pending press.
+      map.on('movestart', onCancel);
+      map.on('dragstart', onCancel);
 
-    return () => {
-      press.reset();
-      container.removeEventListener('pointerdown', onDown);
-      container.removeEventListener('pointermove', onMove);
-      container.removeEventListener('pointerup', onUp);
-      container.removeEventListener('pointercancel', onUp);
-      container.removeEventListener('pointerleave', onCancel);
-      setReady(false);
-      map.remove();
-      mapRef.current = null;
-    };
+      return () => {
+        press.reset();
+        container.removeEventListener('pointerdown', onDown);
+        container.removeEventListener('pointermove', onMove);
+        container.removeEventListener('pointerup', onUp);
+        container.removeEventListener('pointercancel', onUp);
+        container.removeEventListener('pointerleave', onCancel);
+        setReady(false);
+        map.remove();
+        mapRef.current = null;
+      };
+    }
   }, []);
 
   // Zone data: update existing sources, never recreate the map.

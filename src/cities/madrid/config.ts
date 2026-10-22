@@ -1,8 +1,8 @@
 import type { CityConfig } from '../../core/types';
 
 // SER data extent (2026 file, WGS84): lat 40.3781..40.4895, lng -3.7423..-3.6415.
-// Map bounds add ~1 km of margin; the geocoder box adds ~5 km so destinations
-// just outside the SER area can still be searched.
+// Map bounds add ~1 km of margin. The geocoder box only biases/limits the
+// Photon query; results outside `bounds` are still filtered out afterwards.
 export const madridConfig: CityConfig = {
   id: 'madrid',
   name: 'Madrid',

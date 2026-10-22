@@ -255,6 +255,19 @@ describe('App go flow', () => {
     expect(screen.queryByRole('region', { name: 'Blue zones' })).not.toBeInTheDocument();
   });
 
+  it('Go on a session that expired since the last tick does not navigate', async () => {
+    saveSettings({ showVisitor: true, showResident: true, navApp: 'google' });
+    saveSession(sessionOf({}));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByRole('region', { name: 'Blue zones' });
+    const real = Date.now();
+    vi.spyOn(Date, 'now').mockReturnValue(real + 91 * 60 * 1000);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Go' })[0]!);
+    expect(nav.openNavigation).not.toHaveBeenCalled();
+    expect(screen.queryByText('Found a spot?')).not.toBeInTheDocument();
+  });
+
   it('a saved app skips the chooser', async () => {
     saveSettings({ showVisitor: true, showResident: true, navApp: 'google' });
     saveSession(sessionOf({}));

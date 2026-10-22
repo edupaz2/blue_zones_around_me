@@ -31,7 +31,6 @@ export async function searchPlaces(
     q,
     limit: '5',
     bbox: city.geocoderBbox.join(','),
-    lang: 'es',
   });
   const res = await fetchFn(`${PHOTON_URL}?${params.toString()}`);
   if (!res.ok) throw new Error(`Geocoder HTTP ${res.status}`);

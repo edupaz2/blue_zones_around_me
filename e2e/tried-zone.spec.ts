@@ -136,3 +136,16 @@ test('tried zone is excluded after reload and next zone', async ({ page }, testI
   // current zoom nearly all features are clustered, so it cannot be checked reliably.
   expect(errors.filter((e) => /Worker failed to load/i.test(e))).toEqual([]);
 });
+
+test('markers and cards still work when the map style cannot be loaded', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.route('https://tiles.openfreemap.org/**', (route) => route.abort());
+
+  await page.goto('/?e2e');
+  await page.locator('[data-testid="app-ready"]').waitFor();
+  await page.getByRole('button', { name: 'Around me' }).click();
+  await expect(page.locator('.cards > li[data-zone-id]')).toHaveCount(3);
+  await expect.poll(() => renderedFeatureCount(page), { timeout: 15_000 }).toBeGreaterThan(0);
+  expect(errors).toEqual([]);
+});

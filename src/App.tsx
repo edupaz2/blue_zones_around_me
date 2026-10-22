@@ -45,7 +45,9 @@ function Ready({ data }: { data: ZoneData }) {
     const zone = data.candidates.find((z) => z.id === zoneId);
     if (!zone) return;
     // Persist the driving state first: iOS may reload the PWA once the nav app opens.
-    dispatch({ type: 'go', zoneId, now: Date.now() });
+    const next = dispatch({ type: 'go', zoneId, now: Date.now() });
+    // The reducer ignores `go` for an expired/non-choosing session: then do not navigate.
+    if (next.status !== 'driving') return;
     openNavigation(buildNavigationUrl(app, zone.target));
   };
 

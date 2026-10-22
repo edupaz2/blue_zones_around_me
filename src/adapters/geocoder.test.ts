@@ -15,14 +15,14 @@ function okFetch(features: unknown[]) {
 const asFetch = (f: unknown) => f as typeof fetch;
 
 describe('searchPlaces', () => {
-  it('builds a Photon URL with q, limit, bbox and lang', async () => {
+  it('builds a Photon URL with q, limit and bbox (no lang)', async () => {
     const f = okFetch([]);
     await searchPlaces('Plaza Mayor', madridConfig, asFetch(f));
     const url = new URL(f.mock.calls[0][0] as string);
     expect(url.origin + url.pathname).toBe('https://photon.komoot.io/api/');
     expect(url.searchParams.get('q')).toBe('Plaza Mayor');
     expect(url.searchParams.get('limit')).toBe('5');
-    expect(url.searchParams.get('lang')).toBe('es');
+    expect(url.searchParams.has('lang')).toBe(false);
     expect(url.searchParams.get('bbox')).toBe(madridConfig.geocoderBbox.join(','));
   });
 

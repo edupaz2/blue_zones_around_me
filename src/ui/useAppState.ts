@@ -20,7 +20,7 @@ export function useAppState(data: ZoneData): {
   locationStatus: LocationStatus;
   ranked: RankResult;
   radiiM: number[];
-  dispatch: (a: SessionAction) => void;
+  dispatch: (a: SessionAction) => SessionState;
   setSettings: (s: Settings) => void;
   widen: () => void;
 } {
@@ -34,19 +34,20 @@ export function useAppState(data: ZoneData): {
   // before any follow-up side effect (e.g. opening the nav app, after which iOS may
   // suspend or reload the page before a post-render effect would have run).
   const sessionRef = useRef(session);
-  const apply = useCallback((action: SessionAction) => {
+  const apply = useCallback((action: SessionAction): SessionState => {
     const next = sessionReducer(sessionRef.current, action);
     if (next !== sessionRef.current) {
       sessionRef.current = next;
       saveSession(next);
     }
     rawDispatch(action);
+    return sessionRef.current;
   }, []);
 
   const dispatch = useCallback(
-    (action: SessionAction) => {
+    (action: SessionAction): SessionState => {
       if (action.type === 'start') setRadiiM(madridConfig.radiiM);
-      apply(action);
+      return apply(action);
     },
     [apply],
   );

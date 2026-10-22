@@ -18,7 +18,8 @@ export default defineConfig({
       manifest: {
         name: 'Blue Zones Around Me',
         short_name: 'Blue Zones',
-        description: 'Find the nearest car-free and calm street stretches around you.',
+        description:
+          "See Madrid's blue and green parking zones and find the nearest blue zone to park.",
         start_url: base,
         scope: base,
         display: 'standalone',
