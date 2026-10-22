@@ -11,7 +11,7 @@
     "format": "prettier --check .",
     "test": "vitest run",
     "test:e2e": "echo 'e2e wired in a later task'",
-    "data:madrid": "echo 'data pipeline wired in a later task'"
+    "data:madrid": "tsx scripts/build-data.ts"
   },
   "dependencies": {
     "react": "^19.3.1",
@@ -33,6 +33,7 @@
     "jsdom": "^29.1.1",
     "prettier": "^3.9.10",
     "proj4": "^2.22.0",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.0",
     "vite": "^8.3.5",

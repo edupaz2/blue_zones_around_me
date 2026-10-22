@@ -5,4 +5,5 @@ docs
 .superpowers
 playwright-report
 test-results
+public/data
 scripts/cities/*/fixtures
