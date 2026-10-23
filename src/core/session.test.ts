@@ -100,4 +100,29 @@ describe('sessionReducer', () => {
     expect(reduce(st, { type: 'tick', now: late }).status).toBe('idle');
     expect(reduce(st, { type: 'tick', now: 2000 })).toEqual(st);
   });
+
+  it('choosing -> cancel -> fresh idle', () => {
+    const s = reduce(choosing({ tried: ['a', 'b'], zoneId: 'z9' }), { type: 'cancel', now: 2000 });
+    expect(s).toEqual({
+      status: 'idle',
+      origin: null,
+      zoneId: null,
+      tried: [],
+      lastActivityAt: 2000,
+    });
+  });
+
+  it('cancel is ignored (same reference) from idle and driving', () => {
+    const idle = { ...initialSession, lastActivityAt: 1000 };
+    expect(reduce(idle, { type: 'cancel', now: 2000 })).toBe(idle);
+    const d = driving();
+    expect(reduce(d, { type: 'cancel', now: 2000 })).toBe(d);
+  });
+
+  it('cancel after the 90-minute expiry still yields idle', () => {
+    const s = reduce(choosing(), { type: 'cancel', now: 1000 + SESSION_TIMEOUT_MS + 1 });
+    expect(s.status).toBe('idle');
+    expect(s.origin).toBeNull();
+    expect(s.tried).toEqual([]);
+  });
 });

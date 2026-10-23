@@ -44,6 +44,9 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
         tried: cur.zoneId ? [...cur.tried, cur.zoneId] : cur.tried,
         lastActivityAt: at,
       };
+    case 'cancel':
+      if (cur.status !== 'choosing') return cur;
+      return { ...initialSession, lastActivityAt: at };
     case 'tick':
       return cur;
   }
