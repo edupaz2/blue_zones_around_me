@@ -146,7 +146,7 @@ identifiers in the browser, so no consent banner is used.
 | `widen`          | "Widen search" was pressed                     |
 | `close-results`  | The results panel was closed with the x button |
 
-**What is never sent:** your location or coordinates, search text, street or zone
+**What is never sent to GoatCounter:** your location or coordinates, search text, street or zone
 names, or any other user-derived value. This is enforced by the type system:
 `track()` in `src/analytics/index.ts` only accepts the nine event names above.
 
@@ -157,6 +157,17 @@ block it; the app works the same without it, and offline nothing is sent.
 **Removing or replacing it:** delete `src/analytics/` and the `initAnalytics()` call
 in `src/main.tsx` (plus the `track(...)` calls in `src/App.tsx`), or swap the
 implementation inside `src/analytics/index.ts`, keeping the `track` signature.
+
+**Address lookup (not analytics)**
+
+- Typing in the search box sends only the typed text (and the Madrid bounding box)
+  to the public [Photon](https://photon.komoot.io) geocoder, to suggest addresses.
+- After a long-press on the map, the app shows the address of the pressed point. For
+  that it sends the pressed coordinates (not your GPS position, unless you pressed
+  there) to the same public Photon server, with no other identifier.
+- Nothing from either lookup goes to GoatCounter. If the lookup fails, times out or
+  you are offline, the panel silently keeps the label "Selected point". Closing the
+  results panel cancels a lookup that is still running and drops the address.
 
 ## Limitations
 
