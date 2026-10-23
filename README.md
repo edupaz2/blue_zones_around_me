@@ -93,6 +93,26 @@ Every push and pull request runs format check, lint, type check, unit tests,
 Playwright e2e and the build. The manual iPhone and Android checks are in
 [docs/manual-device-checklist.md](docs/manual-device-checklist.md).
 
+## Languages
+
+The UI is available in English (`en`) and Spanish (`es`). The language is picked
+automatically from the system/browser language (`navigator.languages`, first
+supported match wins); anything else falls back to English. There is no manual
+switch. Zone and street names come from the data and are never translated, and
+Madrid's official zone names ("Zona azul", "Zona verde") are kept as is.
+
+The web app manifest (name and description) and the static `<title>` in
+`index.html` are build-time and stay in English; at runtime the app sets
+`document.title` and `<html lang>` for the detected language.
+
+To add a language:
+
+1. Create `src/i18n/messages.xx.ts` exporting a `Record<MessageKey, string>`
+   (TypeScript fails the build if a key is missing or extra; keep `{placeholder}`s
+   identical and provide `_one`/`_other` plural pairs).
+2. Add the code to `Locale`, `detectLocale` and the catalog map in `src/i18n/core.ts`.
+3. Add detection and parity cases to `src/i18n/i18n.test.ts`.
+
 ## Offline behaviour
 
 After the first load the service worker caches the app and zone data (about 8 MB),
