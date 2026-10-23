@@ -49,3 +49,41 @@ export async function searchPlaces(
   }
   return out;
 }
+
+const REVERSE_URL = 'https://photon.komoot.io/reverse';
+const REVERSE_TIMEOUT_MS = 4000;
+
+/**
+ * Best-effort address of a point. Never throws: any failure (network, timeout,
+ * abort, HTTP error, bad JSON, nothing found) yields null.
+ */
+export async function reversePlace(
+  point: LatLng,
+  fetchFn: typeof fetch = fetch,
+  options: { signal?: AbortSignal; timeoutMs?: number } = {},
+): Promise<string | null> {
+  const { signal, timeoutMs = REVERSE_TIMEOUT_MS } = options;
+  if (signal?.aborted) return null;
+  const ctl = new AbortController();
+  const abort = () => ctl.abort();
+  signal?.addEventListener('abort', abort);
+  const timer = setTimeout(abort, timeoutMs);
+  try {
+    // No `lang` parameter: Photon answers HTTP 400 to unsupported languages such as `es`.
+    const params = new URLSearchParams({
+      lon: String(point.lng),
+      lat: String(point.lat),
+      limit: '1',
+    });
+    const res = await fetchFn(`${REVERSE_URL}?${params.toString()}`, { signal: ctl.signal });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { features?: PhotonFeature[] };
+    const props = body.features?.[0]?.properties;
+    return props ? buildLabel(props) || null : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', abort);
+  }
+}

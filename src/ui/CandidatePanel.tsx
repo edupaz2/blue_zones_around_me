@@ -6,6 +6,8 @@ import type { CandidateZone, Origin } from '../core/types';
 interface Props {
   result: RankResult;
   mode: Origin['mode'];
+  /** Address of the destination (destination searches only). */
+  destinationLabel?: string;
   selectedId: string | null;
   onSelect: (id: string) => void;
   onGo: (id: string) => void;
@@ -23,6 +25,7 @@ export function formatDistance(m: number, locale: Locale = 'en'): string {
 export default function CandidatePanel({
   result,
   mode,
+  destinationLabel,
   selectedId,
   onSelect,
   onGo,
@@ -38,6 +41,7 @@ export default function CandidatePanel({
   };
   const header = (
     <div className="panel-header">
+      {destinationLabel && <p className="panel-address">{destinationLabel}</p>}
       <button type="button" className="panel-close" aria-label={t('panel.close')} onClick={onClose}>
         ×
       </button>

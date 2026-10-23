@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Map as MapLibreMap, setWorkerUrl } from 'maplibre-gl';
+import { Map as MapLibreMap, Marker, setWorkerUrl } from 'maplibre-gl';
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import type { FeatureCollection } from 'geojson';
 import type { ExpressionSpecification, GeoJSONSource } from 'maplibre-gl';
@@ -24,6 +24,8 @@ export interface MapViewProps {
   onLongPress: (p: LatLng) => void;
   recenterSignal: number;
   fitTo?: { id: string; points: LatLng[] } | null;
+  /** Where to draw the red destination pin; null/omitted for none. */
+  destinationPin?: LatLng | null;
 }
 
 // Vite does not emit MapLibre's worker file on its own (the default URL is
@@ -35,6 +37,7 @@ const LONG_PRESS_MS = 600;
 const LONG_PRESS_SLOP_PX = 10;
 const FOLLOW_ZOOM = 16;
 const HIGHLIGHT_ZOOM = 16;
+const PIN_COLOR = '#d32f2f';
 const TRIED_COLOR = '#9e9e9e';
 const CLUSTER_MAX_ZOOM = 14;
 
@@ -88,6 +91,7 @@ export default function MapView({
   onLongPress,
   recenterSignal,
   fitTo = null,
+  destinationPin = null,
 }: MapViewProps) {
   const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -424,6 +428,27 @@ export default function MapView({
       duration: 600,
     });
   }, [ready, fitId]);
+
+  // Destination pin: created, moved and removed with the prop; removed on unmount.
+  const pinRef = useRef<Marker | null>(null);
+  const pinLat = destinationPin?.lat ?? null;
+  const pinLng = destinationPin?.lng ?? null;
+  const pinName = t('map.destinationPin');
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || pinLat === null || pinLng === null) return;
+    const marker = new Marker({ color: PIN_COLOR }).setLngLat([pinLng, pinLat]).addTo(map);
+    const el = marker.getElement();
+    // Never intercept map gestures (the next long-press may start on the pin).
+    el.style.pointerEvents = 'none';
+    el.setAttribute('role', 'img');
+    el.setAttribute('aria-label', pinName);
+    pinRef.current = marker;
+    return () => {
+      marker.remove();
+      if (pinRef.current === marker) pinRef.current = null;
+    };
+  }, [ready, pinLat, pinLng, pinName]);
 
   // Highlight: ease to the zone's target.
   useEffect(() => {

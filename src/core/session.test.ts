@@ -126,3 +126,47 @@ describe('sessionReducer', () => {
     expect(s.tried).toEqual([]);
   });
 });
+
+describe('sessionReducer relabel', () => {
+  const relabel = (over: Partial<{ point: Origin['point']; label: string; now: number }> = {}) =>
+    ({ type: 'relabel', point: o1.point, label: 'Calle Mayor 1', now: 2000, ...over }) as const;
+
+  it('relabels a matching choosing destination origin without touching activity', () => {
+    const s = reduce(choosing(), relabel());
+    expect(s).toEqual(choosing({ origin: { ...o1, label: 'Calle Mayor 1' } }));
+    expect(s.lastActivityAt).toBe(1000);
+  });
+
+  it('is ignored (same reference) for a different point', () => {
+    const st = choosing();
+    expect(reduce(st, relabel({ point: { lat: 1, lng: 2.0001 } }))).toBe(st);
+    expect(reduce(st, relabel({ point: { lat: 1.0001, lng: 2 } }))).toBe(st);
+  });
+
+  it('is ignored for around mode', () => {
+    const st = choosing({ origin: o2 });
+    expect(reduce(st, relabel({ point: o2.point }))).toBe(st);
+  });
+
+  it('is ignored when idle, driving or without an origin', () => {
+    const idle = { ...initialSession, lastActivityAt: 1000 };
+    expect(reduce(idle, relabel())).toBe(idle);
+    const d = driving();
+    expect(reduce(d, relabel())).toBe(d);
+  });
+
+  it('is ignored for an identical label', () => {
+    const st = choosing();
+    expect(reduce(st, relabel({ label: 'A' }))).toBe(st);
+  });
+
+  it('is ignored after cancel', () => {
+    const cancelled = reduce(choosing(), { type: 'cancel', now: 1500 });
+    expect(reduce(cancelled, relabel({ now: 1600 }))).toBe(cancelled);
+  });
+
+  it('after expiry resets to idle first and is then ignored', () => {
+    const s = reduce(choosing(), relabel({ now: 1000 + SESSION_TIMEOUT_MS + 1 }));
+    expect(s).toBe(initialSession);
+  });
+});
