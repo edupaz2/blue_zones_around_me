@@ -3,13 +3,7 @@ import { join } from 'node:path';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { expect, test } from '@playwright/test';
 import type { Page, TestInfo } from '@playwright/test';
-
-// Minimal offline style so the test never depends on tiles.openfreemap.org.
-const EMPTY_STYLE = {
-  version: 8,
-  sources: {},
-  layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#eef' } }],
-};
+import { EMPTY_STYLE } from './helpers';
 
 // Circle layers only: the inline style has no glyphs, so symbol layers are skipped.
 const CIRCLE_LAYERS = [

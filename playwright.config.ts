@@ -14,6 +14,8 @@ export default defineConfig({
   reporter: 'list',
   use: {
     baseURL: 'http://localhost:4173',
+    // Pinned so a developer's or CI machine's system language cannot change UI text.
+    locale: 'en-US',
     serviceWorkers: 'block',
     permissions: ['geolocation'],
     geolocation: MADRID_SPOT,

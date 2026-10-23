@@ -3,6 +3,7 @@ import type { LocationStatus, Position } from '../adapters/location';
 import { madridConfig } from '../cities/madrid/config';
 import { inBounds } from '../core/bounds';
 import type { Origin } from '../core/types';
+import { useI18n } from '../i18n';
 
 interface Props {
   position: Position | null;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function AroundMeButton({ position, locationStatus, onPress }: Props) {
+  const { t } = useI18n();
   const [outside, setOutside] = useState(false);
   const blocked = locationStatus === 'denied' || locationStatus === 'unavailable';
   const disabled = blocked || position === null;
@@ -33,23 +35,21 @@ export default function AroundMeButton({ position, locationStatus, onPress }: Pr
         disabled={disabled}
         onClick={press}
       >
-        Around me
+        {t('around.button')}
       </button>
       {blocked && (
         <p className="note" role="status">
-          Turn on location to use this. iOS Safari: Settings &gt; Privacy &amp; Security &gt;
-          Location Services &gt; Safari Websites. Android Chrome: site settings &gt; Permissions
-          &gt; Location.
+          {t('around.enableLocation')}
         </p>
       )}
       {!blocked && position === null && (
         <p className="note" role="status">
-          Waiting for your location…
+          {t('around.waiting')}
         </p>
       )}
       {outside && (
         <p className="note" role="alert">
-          You&apos;re outside the Madrid SER area
+          {t('around.outside')}
         </p>
       )}
     </div>

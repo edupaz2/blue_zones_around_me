@@ -3,6 +3,7 @@ import { madridConfig } from './cities/madrid/config';
 import { inBounds } from './core/bounds';
 import { buildNavigationUrl } from './core/handoff';
 import type { LatLng } from './core/types';
+import { useI18n } from './i18n';
 import AroundMeButton from './ui/AroundMeButton';
 import CandidatePanel from './ui/CandidatePanel';
 import FoundSpotPrompt from './ui/FoundSpotPrompt';
@@ -18,6 +19,7 @@ import type { ZoneData } from './ui/useZoneData';
 import './ui/ui.css';
 
 function Ready({ data }: { data: ZoneData }) {
+  const { t } = useI18n();
   const { session, settings, position, locationStatus, ranked, dispatch, setSettings, widen } =
     useAppState(data);
   const [pickedId, setSelectedId] = useState<string | null>(null);
@@ -38,7 +40,7 @@ function Ready({ data }: { data: ZoneData }) {
       setPointError(true);
       return;
     }
-    startDestination(p, 'Selected point');
+    startDestination(p, t('app.selectedPoint'));
   };
 
   const launch = (zoneId: string, app: 'google' | 'waze') => {
@@ -120,7 +122,7 @@ function Ready({ data }: { data: ZoneData }) {
           <button
             type="button"
             className="settings-btn"
-            aria-label="Settings"
+            aria-label={t('settings.title')}
             onClick={() => setSettingsOpen(true)}
           >
             ⚙
@@ -129,7 +131,7 @@ function Ready({ data }: { data: ZoneData }) {
         <StaleDataBanner sourceDate={data.sourceDate} now={Date.now()} />
         {pointError && (
           <p className="note" role="alert">
-            That point is outside the Madrid SER area
+            {t('app.pointOutside')}
           </p>
         )}
       </div>
@@ -174,13 +176,14 @@ function Ready({ data }: { data: ZoneData }) {
 }
 
 export default function App() {
+  const { t } = useI18n();
   const { status, data, retry } = useZoneData();
-  if (status === 'loading') return <div role="status">Loading zones…</div>;
+  if (status === 'loading') return <div role="status">{t('app.loading')}</div>;
   if (status === 'error' || !data) {
     return (
       <div role="alert">
-        <p>Couldn&apos;t load zone data</p>
-        <button onClick={retry}>Retry</button>
+        <p>{t('app.loadError')}</p>
+        <button onClick={retry}>{t('app.retry')}</button>
       </div>
     );
   }

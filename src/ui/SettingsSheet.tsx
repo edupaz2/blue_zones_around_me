@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { madridConfig } from '../cities/madrid/config';
 import type { Settings } from '../core/types';
+import { useI18n } from '../i18n';
 
 interface Props {
   settings: Settings;
@@ -12,6 +13,7 @@ interface Props {
 const { visitor, resident } = madridConfig.kinds;
 
 export default function SettingsSheet({ settings, sourceDate, onChange, onClose }: Props) {
+  const { t, formatDate } = useI18n();
   const firstRef = useRef<HTMLInputElement>(null);
   useEffect(() => firstRef.current?.focus(), []);
   useEffect(() => {
@@ -25,7 +27,7 @@ export default function SettingsSheet({ settings, sourceDate, onChange, onClose 
   return (
     <div className="modal-backdrop">
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-        <h2 id="settings-title">Settings</h2>
+        <h2 id="settings-title">{t('settings.title')}</h2>
         <label className="setting-row">
           <input
             ref={firstRef}
@@ -33,7 +35,7 @@ export default function SettingsSheet({ settings, sourceDate, onChange, onClose 
             checked={settings.showVisitor}
             onChange={(e) => onChange({ ...settings, showVisitor: e.target.checked })}
           />
-          {visitor.label} (blue) zones
+          {t('settings.showVisitor', { name: visitor.label })}
         </label>
         <label className="setting-row">
           <input
@@ -41,10 +43,10 @@ export default function SettingsSheet({ settings, sourceDate, onChange, onClose 
             checked={settings.showResident}
             onChange={(e) => onChange({ ...settings, showResident: e.target.checked })}
           />
-          {resident.label} (green) zones
+          {t('settings.showResident', { name: resident.label })}
         </label>
         <fieldset className="setting-group">
-          <legend>Navigation app</legend>
+          <legend>{t('settings.navApp')}</legend>
           <label className="setting-row">
             <input
               type="radio"
@@ -64,9 +66,9 @@ export default function SettingsSheet({ settings, sourceDate, onChange, onClose 
             Waze
           </label>
         </fieldset>
-        <p className="note">Zone data date: {sourceDate}</p>
+        <p className="note">{t('settings.dataDate', { date: formatDate(sourceDate) })}</p>
         <button type="button" className="btn btn-primary" onClick={onClose}>
-          Close
+          {t('settings.close')}
         </button>
       </div>
     </div>
