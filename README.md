@@ -35,6 +35,7 @@ npm run dev
 
 ```
 src/core/       Pure logic: geo maths, ranking, hand-off URLs, session state machine, types
+src/analytics/  Privacy-friendly GoatCounter tracking (fixed event names only)
 src/adapters/   Browser boundaries: geolocation, geocoder (Photon), storage, app visibility
 src/cities/     Per-city configuration (src/cities/madrid/config.ts)
 src/ui/         React components, map layers, hooks, CSS
@@ -119,6 +120,43 @@ After the first load the service worker caches the app and zone data (about 8 MB
 so zones, ranking, "Around me" and the tried list work offline. Map tiles are cached
 as you view them; areas you have not viewed may be blank offline. Destination search
 needs a connection.
+
+## Analytics and privacy
+
+The app uses [GoatCounter](https://www.goatcounter.com), a privacy-friendly,
+cookieless analytics service, hosted at https://bluezones.goatcounter.com (the
+dashboard is there once the owner logs in). It sets no cookies and stores no
+identifiers in the browser, so no consent banner is used.
+
+**What is measured**
+
+- Page views, country, browser/device type and referrer (collected by GoatCounter
+  itself from the page-view hit; IP addresses are not stored).
+- Nine anonymous event counters, each a fixed name that carries no data:
+
+| Event            | Meaning                                        |
+| ---------------- | ---------------------------------------------- |
+| `around-me`      | "Around me" was pressed                        |
+| `search-address` | An address was chosen from the search results  |
+| `map-long-press` | A long-press on the map started a search       |
+| `go-google`      | Navigation was launched with Google Maps       |
+| `go-waze`        | Navigation was launched with Waze              |
+| `found-yes`      | "Found a spot?" answered Yes                   |
+| `found-next`     | "Found a spot?" answered No, next zone         |
+| `widen`          | "Widen search" was pressed                     |
+| `close-results`  | The results panel was closed with the x button |
+
+**What is never sent:** your location or coordinates, search text, street or zone
+names, or any other user-derived value. This is enforced by the type system:
+`track()` in `src/analytics/index.ts` only accepts the nine event names above.
+
+**When it is off:** in development builds, on `localhost` and local-network hosts,
+in tests (`?e2e`), and when the browser sends Do Not Track. Content blockers can also
+block it; the app works the same without it, and offline nothing is sent.
+
+**Removing or replacing it:** delete `src/analytics/` and the `initAnalytics()` call
+in `src/main.tsx` (plus the `track(...)` calls in `src/App.tsx`), or swap the
+implementation inside `src/analytics/index.ts`, keeping the `track` signature.
 
 ## Limitations
 
