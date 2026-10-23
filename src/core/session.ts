@@ -47,6 +47,22 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
     case 'cancel':
       if (cur.status !== 'choosing') return cur;
       return { ...initialSession, lastActivityAt: at };
+    case 'relabel': {
+      // A background update (reverse geocoding), not user activity: a late or
+      // stale response for another/closed search must change nothing.
+      const o = cur.origin;
+      if (
+        cur.status !== 'choosing' ||
+        !o ||
+        o.mode !== 'destination' ||
+        o.point.lat !== action.point.lat ||
+        o.point.lng !== action.point.lng ||
+        o.label === action.label
+      ) {
+        return cur;
+      }
+      return { ...cur, origin: { ...o, label: action.label } };
+    }
     case 'tick':
       return cur;
   }
