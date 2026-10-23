@@ -171,6 +171,7 @@ function Probe() {
         start
       </button>
       <button onClick={s.widen}>widen</button>
+      <button onClick={() => s.dispatch({ type: 'cancel', now: Date.now() })}>cancel</button>
     </div>
   );
 }
@@ -198,6 +199,16 @@ describe('useAppState', () => {
     fireEvent.click(screen.getByText('widen'));
     expect(screen.getByTestId('radii')).toHaveTextContent('800,1200,1600,2000,3000');
     fireEvent.click(screen.getByText('start'));
+    expect(screen.getByTestId('radii')).toHaveTextContent('800,1200,1600,2000');
+  });
+
+  it('resets the widened radii when the session is cancelled', () => {
+    render(<Probe />);
+    fireEvent.click(screen.getByText('start'));
+    fireEvent.click(screen.getByText('widen'));
+    expect(screen.getByTestId('radii')).toHaveTextContent('800,1200,1600,2000,3000');
+    fireEvent.click(screen.getByText('cancel'));
+    expect(screen.getByTestId('status')).toHaveTextContent('idle');
     expect(screen.getByTestId('radii')).toHaveTextContent('800,1200,1600,2000');
   });
 
@@ -297,6 +308,82 @@ describe('App go flow', () => {
     expect(nav.openNavigation.mock.calls[0]![0]).toContain(
       'https://www.google.com/maps/dir/?api=1&destination=',
     );
+  });
+});
+
+describe('App close results', () => {
+  it('closing the panel ends the search without navigating', async () => {
+    saveSession(sessionOf({ tried: ['z9'] }));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByRole('region', { name: 'Blue zones' });
+    expect(screen.queryByRole('button', { name: 'Around me' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('button', { name: /Show .* on map/ })[0]!);
+    expect(mapProps.highlightedZoneId).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Close results' }));
+    expect(screen.queryByRole('region', { name: 'Blue zones' })).not.toBeInTheDocument();
+    expect(mapProps.highlightedZoneId).toBeNull();
+    const saved = storedSession();
+    expect(saved.status).toBe('idle');
+    expect(saved.origin).toBeNull();
+    expect(saved.tried).toEqual([]);
+    expect(nav.openNavigation).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Around me' })).toBeInTheDocument();
+  });
+
+  it('widen, close, then a new search starts from the default radii', async () => {
+    saveSession(sessionOf({ origin: { mode: 'destination', point: { lat: 41, lng: -3 } } }));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByText('No more blue zones nearby');
+    fireEvent.click(screen.getByRole('button', { name: 'Widen search' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close results' }));
+    expect(screen.queryByRole('region', { name: 'Blue zones' })).not.toBeInTheDocument();
+    act(() => mapProps.onLongPress!({ lat: 40.4168, lng: -3.7038 }));
+    expect(await screen.findByRole('region', { name: 'Blue zones' })).toBeInTheDocument();
+    expect(screen.getAllByRole('listitem').length).toBeGreaterThan(0);
+  });
+});
+
+describe('App Around me visibility', () => {
+  it('is shown when idle', async () => {
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    expect(await screen.findByRole('button', { name: 'Around me' })).toBeInTheDocument();
+  });
+
+  it('is hidden while the panel lists zones', async () => {
+    saveSession(sessionOf({}));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByRole('region', { name: 'Blue zones' });
+    expect(screen.queryByRole('button', { name: 'Around me' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('is hidden in the empty panel state', async () => {
+    saveSession(sessionOf({ origin: { mode: 'destination', point: { lat: 41, lng: -3 } } }));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByText('No more blue zones nearby');
+    expect(screen.queryByRole('button', { name: 'Around me' })).not.toBeInTheDocument();
+  });
+
+  it('comes back after the panel is closed', async () => {
+    saveSession(sessionOf({}));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByRole('region', { name: 'Blue zones' });
+    fireEvent.click(screen.getByRole('button', { name: 'Close results' }));
+    expect(screen.getByRole('button', { name: 'Around me' })).toBeInTheDocument();
+  });
+
+  it('is unchanged (shown) in the driving state, where no panel is displayed', async () => {
+    saveSession(sessionOf({ status: 'driving', zoneId: 'z1' }));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByText('Found a spot?');
+    expect(screen.getByRole('button', { name: 'Around me' })).toBeInTheDocument();
   });
 });
 

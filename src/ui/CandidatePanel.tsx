@@ -10,6 +10,7 @@ interface Props {
   onSelect: (id: string) => void;
   onGo: (id: string) => void;
   onWiden: () => void;
+  onClose: () => void;
 }
 
 export function formatDistance(m: number, locale: Locale = 'en'): string {
@@ -26,6 +27,7 @@ export default function CandidatePanel({
   onSelect,
   onGo,
   onWiden,
+  onClose,
 }: Props) {
   const { t, locale } = useI18n();
   const zoneName = (zone: CandidateZone): string => {
@@ -34,10 +36,18 @@ export default function CandidatePanel({
     const more = zone.streets.length - 2;
     return more > 0 ? t('card.moreStreets', { shown, count: more }) : shown;
   };
+  const header = (
+    <div className="panel-header">
+      <button type="button" className="panel-close" aria-label={t('panel.close')} onClick={onClose}>
+        ×
+      </button>
+    </div>
+  );
   const cards = result.ranked.slice(0, 3);
   if (cards.length === 0) {
     return (
       <section className="panel" aria-label={t('panel.label')}>
+        {header}
         <p className="panel-empty">{t('panel.noMore')}</p>
         <button type="button" className="btn btn-primary" onClick={onWiden}>
           {t('panel.widen')}
@@ -47,6 +57,7 @@ export default function CandidatePanel({
   }
   return (
     <section className="panel" aria-label={t('panel.label')}>
+      {header}
       <ul className="cards">
         {cards.map(({ zone, distanceM }) => (
           <li

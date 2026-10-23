@@ -25,6 +25,9 @@
   max-height: 50vh;
   box-sizing: border-box;
 }
+.overlay-bottom:has(.panel) {
+  padding: 0;
+}
 .overlay-bottom .panel {
   overflow-y: auto;
   min-height: 0;
@@ -110,8 +113,31 @@
 .panel {
   background: #fff;
   border-radius: 16px 16px 0 0;
-  padding: 12px;
+  padding: 12px 12px max(12px, env(safe-area-inset-bottom));
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.2);
+}
+.panel:has(.panel-header) {
+  padding-top: 0;
+}
+.panel-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 -12px;
+  padding: 0 4px;
+  background: #fff;
+}
+.panel-close {
+  width: 48px;
+  height: 48px;
+  font-size: 28px;
+  line-height: 1;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #444;
 }
 .panel-empty {
   margin: 0 0 8px;

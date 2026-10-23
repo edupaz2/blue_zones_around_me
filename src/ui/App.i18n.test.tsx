@@ -120,4 +120,14 @@ describe('App in Spanish', () => {
     render(<App />);
     expect(await screen.findByRole('button', { name: 'Around me' })).toBeInTheDocument();
   });
+
+  it('names the results close button in Spanish', async () => {
+    saveSession(choosing);
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(await screen.findByRole('button', { name: 'Cerrar resultados' })).toBeInTheDocument();
+  });
 });

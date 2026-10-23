@@ -67,4 +67,5 @@ export type SessionAction =
   | { type: 'go'; zoneId: string; now: number }
   | { type: 'found'; now: number }
   | { type: 'next'; now: number; origin?: Origin }
+  | { type: 'cancel'; now: number }
   | { type: 'tick'; now: number };

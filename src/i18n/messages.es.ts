@@ -13,6 +13,7 @@ export const es: Record<MessageKey, string> = {
     'Activa la ubicación para usar esta función. Safari en iOS: Ajustes > Privacidad y seguridad > Localización > Sitios web de Safari. Chrome en Android: ajustes del sitio > Permisos > Ubicación.',
   'around.waiting': 'Esperando tu ubicación…',
   'around.outside': 'Estás fuera del área SER de Madrid',
+  'panel.close': 'Cerrar resultados',
   'panel.label': 'Zonas azules',
   'panel.noMore': 'No quedan zonas azules cerca',
   'panel.widen': 'Ampliar búsqueda',

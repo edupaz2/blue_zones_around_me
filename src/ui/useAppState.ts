@@ -46,7 +46,7 @@ export function useAppState(data: ZoneData): {
 
   const dispatch = useCallback(
     (action: SessionAction): SessionState => {
-      if (action.type === 'start') setRadiiM(madridConfig.radiiM);
+      if (action.type === 'start' || action.type === 'cancel') setRadiiM(madridConfig.radiiM);
       return apply(action);
     },
     [apply],

@@ -12,6 +12,7 @@ export const en = {
     'Turn on location to use this. iOS Safari: Settings > Privacy & Security > Location Services > Safari Websites. Android Chrome: site settings > Permissions > Location.',
   'around.waiting': 'Waiting for your location…',
   'around.outside': "You're outside the Madrid SER area",
+  'panel.close': 'Close results',
   'panel.label': 'Blue zones',
   'panel.noMore': 'No more blue zones nearby',
   'panel.widen': 'Widen search',

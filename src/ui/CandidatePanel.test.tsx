@@ -26,7 +26,7 @@ const result: RankResult = {
 };
 
 function setup(r: RankResult = result, mode: 'destination' | 'around' = 'destination') {
-  const fns = { onSelect: vi.fn(), onGo: vi.fn(), onWiden: vi.fn() };
+  const fns = { onSelect: vi.fn(), onGo: vi.fn(), onWiden: vi.fn(), onClose: vi.fn() };
   render(<CandidatePanel result={r} mode={mode} selectedId={null} {...fns} />);
   return fns;
 }
@@ -76,5 +76,19 @@ describe('CandidatePanel', () => {
     expect(screen.getByText('No more blue zones nearby')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Widen search' }));
     expect(f.onWiden).toHaveBeenCalled();
+  });
+
+  it('has a close button with the list that calls onClose', () => {
+    const f = setup();
+    fireEvent.click(screen.getByRole('button', { name: 'Close results' }));
+    expect(f.onClose).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+  });
+
+  it('has a close button in the empty state too', () => {
+    const f = setup({ ranked: [], radiusM: null });
+    fireEvent.click(screen.getByRole('button', { name: 'Close results' }));
+    expect(f.onClose).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'Widen search' })).toBeInTheDocument();
   });
 });
