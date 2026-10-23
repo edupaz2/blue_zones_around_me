@@ -255,6 +255,24 @@ describe('App go flow', () => {
     expect(screen.queryByRole('region', { name: 'Blue zones' })).not.toBeInTheDocument();
   });
 
+  it('cancelling the chooser after a mistaken Go opens nothing and keeps the candidate list', async () => {
+    saveSession(sessionOf({}));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByRole('region', { name: 'Blue zones' });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Go' })[0]!);
+    expect(screen.getByText('Navigate with')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByText('Navigate with')).not.toBeInTheDocument();
+    expect(nav.openNavigation).not.toHaveBeenCalled();
+    expect(screen.queryByText('Found a spot?')).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Blue zones' })).toBeInTheDocument();
+    expect(localStorage.getItem('bza:v1:session')).not.toContain('driving');
+    expect(loadSettings().navApp).toBeNull();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Go' })[0]!);
+    expect(screen.getByText('Navigate with')).toBeInTheDocument();
+  });
+
   it('Go on a session that expired since the last tick does not navigate', async () => {
     saveSettings({ showVisitor: true, showResident: true, navApp: 'google' });
     saveSession(sessionOf({}));
