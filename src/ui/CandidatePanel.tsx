@@ -1,3 +1,5 @@
+import { formatNumber, useI18n } from '../i18n';
+import type { Locale } from '../i18n';
 import type { RankResult } from '../core/ranking';
 import type { CandidateZone, Origin } from '../core/types';
 
@@ -10,16 +12,11 @@ interface Props {
   onWiden: () => void;
 }
 
-export function formatDistance(m: number): string {
+export function formatDistance(m: number, locale: Locale = 'en'): string {
   const r = Math.round(m);
-  return r < 1000 ? `${r} m` : `${(m / 1000).toFixed(1)} km`;
-}
-
-function zoneName(zone: CandidateZone): string {
-  if (zone.streets.length === 0) return zone.neighbourhood;
-  const shown = zone.streets.slice(0, 2).join(', ');
-  const more = zone.streets.length - 2;
-  return more > 0 ? `${shown} +${more} more` : shown;
+  if (r < 1000) return `${r} m`;
+  const km = formatNumber(locale, m / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  return `${km} km`;
 }
 
 export default function CandidatePanel({
@@ -30,19 +27,26 @@ export default function CandidatePanel({
   onGo,
   onWiden,
 }: Props) {
+  const { t, locale } = useI18n();
+  const zoneName = (zone: CandidateZone): string => {
+    if (zone.streets.length === 0) return zone.neighbourhood;
+    const shown = zone.streets.slice(0, 2).join(', ');
+    const more = zone.streets.length - 2;
+    return more > 0 ? t('card.moreStreets', { shown, count: more }) : shown;
+  };
   const cards = result.ranked.slice(0, 3);
   if (cards.length === 0) {
     return (
-      <section className="panel" aria-label="Blue zones">
-        <p className="panel-empty">No more blue zones nearby</p>
+      <section className="panel" aria-label={t('panel.label')}>
+        <p className="panel-empty">{t('panel.noMore')}</p>
         <button type="button" className="btn btn-primary" onClick={onWiden}>
-          Widen search
+          {t('panel.widen')}
         </button>
       </section>
     );
   }
   return (
-    <section className="panel" aria-label="Blue zones">
+    <section className="panel" aria-label={t('panel.label')}>
       <ul className="cards">
         {cards.map(({ zone, distanceM }) => (
           <li
@@ -53,19 +57,20 @@ export default function CandidatePanel({
             <button
               type="button"
               className="card-main"
-              aria-label={`Show ${zoneName(zone)} on map`}
+              aria-label={t('card.show', { name: zoneName(zone) })}
               aria-pressed={zone.id === selectedId}
               onClick={() => onSelect(zone.id)}
             >
               <span className="card-name">{zoneName(zone)}</span>
               <span className="card-sub">{zone.neighbourhood}</span>
               <span className="card-meta">
-                {zone.totalSpaces} blue spaces · <span>{formatDistance(distanceM)}</span>{' '}
-                {mode === 'around' ? 'from you' : 'from destination'}
+                {t('card.spaces', { count: zone.totalSpaces })} ·{' '}
+                <span>{formatDistance(distanceM, locale)}</span>{' '}
+                {mode === 'around' ? t('card.fromYou') : t('card.fromDestination')}
               </span>
             </button>
             <button type="button" className="btn btn-primary" onClick={() => onGo(zone.id)}>
-              Go
+              {t('card.go')}
             </button>
           </li>
         ))}

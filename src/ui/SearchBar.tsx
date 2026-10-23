@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { searchPlaces } from '../adapters/geocoder';
 import type { GeoResult } from '../adapters/geocoder';
 import { madridConfig } from '../cities/madrid/config';
+import { useI18n } from '../i18n';
 
 interface Props {
   onSelect: (r: GeoResult) => void;
@@ -9,9 +10,9 @@ interface Props {
 }
 
 const DEBOUNCE_MS = 300;
-const HINT = 'You can also long-press the map to set a destination.';
 
 export default function SearchBar({ onSelect, search = searchPlaces }: Props) {
+  const { t } = useI18n();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<GeoResult[]>([]);
   const [message, setMessage] = useState<string | null>(null);
@@ -30,25 +31,25 @@ export default function SearchBar({ onSelect, search = searchPlaces }: Props) {
         (r) => {
           if (id !== seq.current) return;
           setResults(r);
-          setMessage(r.length === 0 ? 'No results.' : null);
+          setMessage(r.length === 0 ? t('search.noResults') : null);
         },
         () => {
           if (id !== seq.current) return;
           setResults([]);
-          setMessage("Search isn't available right now.");
+          setMessage(t('search.unavailable'));
         },
       );
     }, DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [query, search]);
+  }, [query, search, t]);
 
   return (
     <div className="search">
       <input
         type="search"
         className="search-input"
-        placeholder="Where are you going?"
-        aria-label="Search destination"
+        placeholder={t('search.placeholder')}
+        aria-label={t('search.label')}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
@@ -73,7 +74,7 @@ export default function SearchBar({ onSelect, search = searchPlaces }: Props) {
       )}
       {message && (
         <p className="note" role="status">
-          {message} {HINT}
+          {message} {t('search.hint')}
         </p>
       )}
     </div>

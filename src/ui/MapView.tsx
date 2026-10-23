@@ -7,6 +7,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import type { Position } from '../adapters/location';
 import { madridConfig } from '../cities/madrid/config';
 import type { LatLng, Settings } from '../core/types';
+import { useI18n } from '../i18n';
 import { createLongPress } from './longPress';
 import type { PressPoint } from './longPress';
 import { boundsForPoints } from './mapFit';
@@ -88,6 +89,7 @@ export default function MapView({
   recenterSignal,
   fitTo = null,
 }: MapViewProps) {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const followingRef = useRef(true);
@@ -446,7 +448,7 @@ export default function MapView({
       />
       <button
         type="button"
-        aria-label="Recenter"
+        aria-label={t('map.recenter')}
         aria-pressed={following}
         onClick={recenter}
         style={{

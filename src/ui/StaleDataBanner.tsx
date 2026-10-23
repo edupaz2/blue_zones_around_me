@@ -1,3 +1,5 @@
+import { useI18n } from '../i18n';
+
 interface Props {
   sourceDate: string;
   now: number;
@@ -20,10 +22,11 @@ export function isStale(sourceDate: string, now: number): boolean {
 }
 
 export default function StaleDataBanner({ sourceDate, now }: Props) {
+  const { t, formatDate } = useI18n();
   if (!isStale(sourceDate, now)) return null;
   return (
     <p className="note stale-banner" role="status">
-      Zone data is from {sourceDate}. Consider refreshing it.
+      {t('stale.banner', { date: formatDate(sourceDate) })}
     </p>
   );
 }

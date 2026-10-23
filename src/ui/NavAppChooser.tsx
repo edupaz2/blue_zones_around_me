@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useI18n } from '../i18n';
 
 interface Props {
   onChoose: (app: 'google' | 'waze') => void;
@@ -6,6 +7,7 @@ interface Props {
 }
 
 export default function NavAppChooser({ onChoose, onCancel }: Props) {
+  const { t } = useI18n();
   const firstRef = useRef<HTMLButtonElement>(null);
   useEffect(() => firstRef.current?.focus(), []);
   useEffect(() => {
@@ -25,7 +27,7 @@ export default function NavAppChooser({ onChoose, onCancel }: Props) {
       }}
     >
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="nav-app-title">
-        <h2 id="nav-app-title">Navigate with</h2>
+        <h2 id="nav-app-title">{t('nav.title')}</h2>
         <button
           ref={firstRef}
           type="button"
@@ -38,9 +40,9 @@ export default function NavAppChooser({ onChoose, onCancel }: Props) {
           Waze
         </button>
         <button type="button" className="btn" onClick={onCancel}>
-          Cancel
+          {t('nav.cancel')}
         </button>
-        <p className="note">You can change this later in settings.</p>
+        <p className="note">{t('nav.hint')}</p>
       </div>
     </div>
   );
