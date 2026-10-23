@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { madridConfig } from './cities/madrid/config';
 import { inBounds } from './core/bounds';
 import { buildNavigationUrl } from './core/handoff';
@@ -62,6 +62,9 @@ function Ready({ data }: { data: ZoneData }) {
     setSettings({ ...settings, navApp: app });
     if (zoneId !== null) launch(zoneId, app);
   };
+
+  // A mistaken Go: `go` was never dispatched, so the session is still `choosing`.
+  const onCancelChooser = useCallback(() => setPendingGoId(null), []);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -165,7 +168,7 @@ function Ready({ data }: { data: ZoneData }) {
           onClose={() => setSettingsOpen(false)}
         />
       )}
-      {pendingGoId !== null && <NavAppChooser onChoose={onChooseApp} />}
+      {pendingGoId !== null && <NavAppChooser onChoose={onChooseApp} onCancel={onCancelChooser} />}
     </main>
   );
 }
