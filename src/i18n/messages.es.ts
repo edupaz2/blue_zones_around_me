@@ -27,6 +27,7 @@ export const es: Record<MessageKey, string> = {
   'found.title': '¿Has encontrado sitio?',
   'found.yes': 'Sí',
   'found.next': 'No, siguiente zona',
+  'found.close': 'Cerrar',
   'nav.title': 'Navegar con',
   'nav.cancel': 'Cancelar',
   'nav.hint': 'Puedes cambiarlo más tarde en Ajustes.',

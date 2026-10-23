@@ -47,6 +47,10 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
     case 'cancel':
       if (cur.status !== 'choosing') return cur;
       return { ...initialSession, lastActivityAt: at };
+    case 'dismiss':
+      // Closing the "Found a spot?" prompt abandons the trip without a verdict.
+      if (cur.status !== 'driving') return cur;
+      return { ...initialSession, lastActivityAt: at };
     case 'relabel': {
       // A background update (reverse geocoding), not user activity: a late or
       // stale response for another/closed search must change nothing.

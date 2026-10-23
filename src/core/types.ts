@@ -68,5 +68,6 @@ export type SessionAction =
   | { type: 'found'; now: number }
   | { type: 'next'; now: number; origin?: Origin }
   | { type: 'cancel'; now: number }
+  | { type: 'dismiss'; now: number }
   | { type: 'relabel'; point: LatLng; label: string; now: number }
   | { type: 'tick'; now: number };

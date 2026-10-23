@@ -119,6 +119,13 @@ describe('sessionReducer', () => {
     expect(reduce(d, { type: 'cancel', now: 2000 })).toBe(d);
   });
 
+  it('dismiss abandons a driving session and is a no-op otherwise', () => {
+    const s = reduce(driving({ tried: ['a'] }), { type: 'dismiss', now: 2000 });
+    expect(s).toEqual({ ...initialSession, lastActivityAt: 2000 });
+    const c = choosing();
+    expect(reduce(c, { type: 'dismiss', now: 2000 })).toBe(c);
+  });
+
   it('cancel after the 90-minute expiry still yields idle', () => {
     const s = reduce(choosing(), { type: 'cancel', now: 1000 + SESSION_TIMEOUT_MS + 1 });
     expect(s.status).toBe('idle');
