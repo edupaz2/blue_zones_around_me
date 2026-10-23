@@ -46,6 +46,7 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     permissions:
+      contents: read # lets the guard below read the tip of main
       pages: write
       id-token: write
     environment:
@@ -55,5 +56,22 @@ jobs:
       group: pages
       cancel-in-progress: false
     steps:
+      # Re-running an older workflow run (or a slow run finishing after a newer one) would
+      # redeploy that run's older build over the live site. Only the tip of main may deploy.
+      - id: guard
+        name: Only deploy the latest commit on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          latest=$(gh api "repos/${REPO}/commits/main" --jq .sha)
+          if [ "$latest" = "$SHA" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Deploy skipped::This run is for ${SHA} but main is now at ${latest}. Not deploying an older build."
+          fi
       - id: deployment
+        if: steps.guard.outputs.current == 'true'
         uses: actions/deploy-pages@v4
