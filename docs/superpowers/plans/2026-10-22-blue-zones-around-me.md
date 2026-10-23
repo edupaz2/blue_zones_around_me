@@ -10,6 +10,18 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-22-blue-zones-around-me-design.md`
 
+**Implementation status (2026-10-23):** Tasks 1–18 are implemented and were merged in PR #1 (`worktree-hidden-splashing-nautilus`), together with the unplanned Task 17b (map polish) and a final-review fix wave. The Addendum at the end of this file records the post-plan tasks: 19–24 were implemented in PRs #2–#7, and Task 25 is on `feat/destination-pin` (pending merge). Tasks 1–18 below are kept unchanged as the historical record; where the text is known to be wrong, see the corrections.
+
+**Corrections to the plan text** (what the code actually does):
+
+- Task 10: `lang=es` is **wrong**. Photon answers HTTP 400 to it, which broke search in production. No `lang` parameter is sent (search or reverse).
+- Task 12: MapLibre's web worker is not emitted by the Vite build on its own (no markers in production). It is imported with `?worker&url` and registered with `setWorkerUrl` in `src/ui/MapView.tsx`. The map style is also fetched defensively (`src/ui/mapStyle.ts`) with an inline fallback.
+- Task 6: `CityConfig` lives in `src/core/types.ts` (config.ts only exports `madridConfig`), and `scripts/types.ts` was never created. Real data findings (see the header of `scripts/cities/madrid/parse.ts`): the CSV is ISO-8859-1/windows-1252 (not UTF-8; `decodeMadridCsv` tries UTF-8 first), `;`-delimited, with coordinates in ETRS89 / UTM 30N (EPSG:25830) converted with `proj4`.
+- Task 8: the pipeline logic is split into `scripts/pipeline.ts` (`buildDataFiles`, `diffByKind`, tested in `pipeline.test.ts`); `build-data.ts` only does I/O.
+- Task 11: `useAppState` also returns `radiiM` and `widen`, and its `dispatch` returns the resulting `SessionState` (so Go can detect an ignored action). Expiry is also applied once on mount and on app return, not only every 60 s.
+- Task 14: `NavAppChooser` takes `onCancel` as well as `onChoose` (Task 19); `openNavigation` lives in `src/ui/openNavigation.ts`.
+- Task 5: the `SessionAction` union also has `cancel` and `relabel` (Tasks 22 and 25).
+
 ## Global Constraints
 
 - TypeScript `strict`; `src/core/` imports no React and no browser APIs; time is passed in, never read from the clock inside core.
@@ -376,3 +388,131 @@
 - [ ] **Step 2: Run locally** `npm run lint && npm run typecheck && npm test && npm run build` — Expected: all PASS.
 - [ ] **Step 3: Commit and push** `ci: add CI and Pages deployment`; enable GitHub Pages (source: GitHub Actions) in repo settings; confirm the Actions run is green and the deployed URL loads.
 - [ ] **Step 4: Run through** `docs/manual-device-checklist.md` on a real iPhone and Android device; record any failures as issues.
+
+---
+
+## Addendum: work after the original plan
+
+Tasks below were done after Tasks 1–18, in the same style. They record what was built and why; the code and its tests are the detail. Dates are 2026-10-22/23.
+
+### Task 17b: Map polish and final-review fix wave (in PR #1)
+
+**Files:**
+- Create: `src/ui/mapFit.ts` (+ test), `src/ui/mapStyle.ts` (+ test), `src/ui/longPress.ts` (+ test), `src/ui/openNavigation.ts`, `src/ui/NavAppChooser.tsx`, `scripts/pipeline.ts` (+ test)
+- Modify: `src/ui/MapView.tsx`, `src/App.tsx`, `src/ui/ui.css`, `src/adapters/geocoder.ts`, `src/ui/useAppState.ts` (`dispatch` result), `vite.config.ts`, `e2e/tried-zone.spec.ts`
+
+**Interfaces:**
+- `boundsForPoints(points: LatLng[]): [[number, number], [number, number]] | null`; `MapViewProps.fitTo?: { id: string; points: LatLng[] } | null`.
+- `resolveStyle(url, fetchFn?, timeoutMs = 6000): Promise<{ style: string | object; fallback: boolean }>`; `FALLBACK_STYLE` (blank background).
+- `useAppState().dispatch(action): SessionState` (returns the state after the reducer).
+
+- [x] Fit the map to origin + ranked targets (+ tried targets) on every new search and after "next zone"; follow mode off until Recenter.
+- [x] Recenter button placed from the measured bottom overlay height (`--overlay-bottom-h`, `ResizeObserver`); overlay `max-height: 50vh` with scroll.
+- [x] Blue drawn above green with a white halo, identical per-kind radius and opacity; tried zones grey `#9e9e9e` with a thicker stroke; `clusterMaxZoom` 14; colours `#1565c0` / `#2e7d32`.
+- [x] Fixes: no Photon `lang` (HTTP 400); defensive style with fallback; MapLibre worker bundled with `?worker&url` + `setWorkerUrl`; cluster tap turns follow off; Go on an expired/ignored session does not open the nav app; manifest description corrected.
+- [x] Key tests: `mapFit.test.ts` (bounds of points, empty); `mapStyle.test.ts` (ok, HTTP error, timeout, invalid JSON fall back); `geocoder.test.ts` (URL has bbox, no `lang`); `App.test.tsx` (Go on an expired session does not navigate); e2e asserts markers render and that cards still work when the style cannot load.
+
+Why: the first real run showed search failing (HTTP 400), no markers in production, and an unusable map framing.
+
+### Task 19: Navigation-app chooser can be cancelled (PR #2, `feat/nav-chooser-cancel`)
+
+**Files:**
+- Modify: `src/ui/NavAppChooser.tsx`, `src/App.tsx`, `src/ui/App.test.tsx`, `src/ui/FoundSpotPrompt.test.tsx`
+
+**Interfaces:**
+- `NavAppChooser({ onChoose: (app: 'google' | 'waze') => void; onCancel: () => void })`.
+
+- [x] Cancel button, Escape and a tap outside the dialog all call `onCancel`, which clears the pending Go.
+- [x] Key tests: after cancelling, `window.open` is not called, the session is still `choosing`, and `navApp` is still unset.
+
+Why: a mistaken Go previously forced choosing an app.
+
+### Task 20: Localization (PR #3, `feat/i18n`)
+
+**Files:**
+- Create: `src/i18n/{core.ts,I18nProvider.tsx,index.ts,messages.en.ts,messages.es.ts,i18n.test.ts}`, `src/ui/App.i18n.test.tsx`, `e2e/{helpers.ts,spanish.spec.ts}`
+- Modify: every UI component, `src/App.tsx`, `src/main.tsx`, `playwright.config.ts`, `e2e/tried-zone.spec.ts`, `README.md`
+
+**Interfaces:**
+- `type Locale = 'en' | 'es'`; `detectLocale(languages: readonly string[] | undefined): Locale` (first supported primary subtag, else `en`); `formatMessage(locale, key, params?)` (plural keys `_one`/`_other` via `Intl.PluralRules`; missing key falls back to English, then the key); `formatNumber`, `formatDate`.
+- `I18nProvider` (sets `<html lang>` and the title); `useI18n(): { locale, t, formatNumber, formatDate }`, usable without a provider.
+
+- [x] English (also the fallback) and Spanish; distances and dates formatted for the locale; "Zona azul"/"Zona verde" kept; static manifest stays English; no manual switch.
+- [x] Key tests: `i18n.test.ts` (detection, plurals, fallbacks, ISO date in English vs long date in Spanish); `App.i18n.test.tsx`; e2e `spanish.spec.ts` (UI follows a Spanish browser locale).
+
+Why: the audience includes English-language phones; following the system language needs no settings.
+
+### Task 21: Search suggestions popup close (PR #4, `feat/search-suggestions-close`)
+
+**Files:**
+- Modify: `src/ui/SearchBar.tsx`, `src/ui/SearchBar.test.tsx`, `src/ui/ui.css`, both message catalogs
+- Create: `e2e/search-close.spec.ts`
+
+**Interfaces:**
+- No new exports; `SearchBar({ onSelect, search? })` unchanged.
+
+- [x] A × button closes the dropdown (also the "no results"/unavailable message); Escape closes it without clearing the text; closing keeps the typed text and ignores a search still in flight.
+- [x] Key tests: `SearchBar.test.tsx` (× and Escape close, text kept, late results ignored); e2e `search-close.spec.ts`.
+
+Why: the popup covered the map with no way to dismiss it.
+
+### Task 22: Results panel close, Around me hidden, `cancel` (PR #5, `feat/results-panel-close`)
+
+**Files:**
+- Modify: `src/core/types.ts`, `src/core/session.ts`, `src/ui/useAppState.ts`, `src/ui/CandidatePanel.tsx`, `src/App.tsx`, `src/ui/ui.css`, catalogs, `session.test.ts`, `CandidatePanel.test.tsx`, `App.test.tsx`, `App.i18n.test.tsx`
+- Create: `e2e/results-close.spec.ts`
+
+**Interfaces:**
+- `SessionAction` gains `{ type: 'cancel'; now: number }`: `choosing` → `idle` (origin, tried and zone cleared); ignored when `idle` or `driving`.
+- `CandidatePanel` gains `onClose: () => void` and an optional `destinationLabel`.
+
+- [x] A slim header row with a 48 px × ends the search; the widened radii are reset on `cancel` as well as on `start`.
+- [x] The Around me button is not rendered while the panel is displayed.
+- [x] Key tests: `session.test.ts` (cancel from choosing; ignored when idle/driving; expiry first); `App.test.tsx` (× closes, Around me hidden then back); e2e `results-close.spec.ts` (close, then a new search works; Spanish layout).
+
+Why: there was no way to leave a result list without starting something else.
+
+### Task 23: Deploy guard (PR #6, `ci/deploy-guard`)
+
+**Files:**
+- Modify: `.github/workflows/ci.yml`
+
+**Interfaces:**
+- `deploy` job permissions gain `contents: read`; a `guard` step compares `github.sha` with `gh api repos/<repo>/commits/main` and sets `current=true|false`; the deployment step runs only when `current == 'true'`.
+
+- [x] An older commit logs a warning and skips the deployment.
+
+Why: re-running an old workflow run once overwrote a newer deployment.
+
+### Task 24: Analytics (PR #7, `feat/analytics`)
+
+**Files:**
+- Create: `src/analytics/index.ts`, `src/analytics/analytics.test.ts`, `e2e/analytics.spec.ts`
+- Modify: `src/main.tsx`, `src/App.tsx`, `src/ui/App.test.tsx`, `README.md`
+
+**Interfaces:**
+- `type AnalyticsEvent = 'around-me' | 'search-address' | 'map-long-press' | 'go-google' | 'go-waze' | 'found-yes' | 'found-next' | 'widen' | 'close-results'`.
+- `track(event: AnalyticsEvent): void`; `initAnalytics(options?: EnableInput): void`; `shouldEnableAnalytics(input: EnableInput): boolean` with `EnableInput { prod; hostname; search; doNotTrack }`.
+
+- [x] GoatCounter (`https://bluezones.goatcounter.com`), cookieless; visitors from the page-view hit, usage from the nine constant events; nothing user-derived can be passed.
+- [x] Disabled in development, on localhost and private-network hosts, with `?e2e`, and with Do Not Track; every failure is swallowed.
+- [x] Key tests: `analytics.test.ts` (enablement rules, one script only, DNT, no-op when not loaded); `App.test.tsx` (events fire on the matching actions; Go on an expired session counts nothing); e2e `analytics.spec.ts` (no script or request on localhost).
+
+Why: know whether the app is used, without collecting anything about the users.
+
+### Task 25: Destination address and red pin (`feat/destination-pin`, pending merge)
+
+**Files:**
+- Modify: `src/adapters/geocoder.ts` (+ test), `src/core/types.ts`, `src/core/session.ts` (+ test), `src/App.tsx`, `src/ui/CandidatePanel.tsx` (+ test), `src/ui/MapView.tsx`, `src/ui/ui.css`, catalogs, `i18n.test.ts`, `App.test.tsx`, `App.i18n.test.tsx`, `README.md`
+- Create: `e2e/destination-pin.spec.ts`
+
+**Interfaces:**
+- `reversePlace(point: LatLng, fetchFn?: typeof fetch, options?: { signal?: AbortSignal; timeoutMs?: number }): Promise<string | null>` (Photon `/reverse`, no `lang`, 4 s default timeout; null on any failure, never throws).
+- `SessionAction` gains `{ type: 'relabel'; point: LatLng; label: string; now: number }`: applies only in `choosing` to a destination origin with the same point; does not change `lastActivityAt`.
+- `MapViewProps.destinationPin?: LatLng | null` (red marker, `role="img"`, name "Destination"/"Destino", `pointer-events: none`).
+
+- [x] After an in-bounds long-press the search starts at once with "Selected point"; the reverse answer replaces the label in the panel header (also shows an address search's label; none for Around me).
+- [x] The lookup is aborted on a new search, on close and on unmount; the pin shows for destination searches while `status !== 'idle'`; closing removes pin and address.
+- [x] Key tests: `geocoder.test.ts` (URL has no `lang`; timeout, abort, HTTP error, empty, bad JSON give null); `session.test.ts` (relabel only for the matching open search; no activity update); `App.test.tsx`; e2e `destination-pin.spec.ts` (address and pin appear; a late answer after close is ignored; long address clamped; Spanish name).
+
+Why: users could not confirm what a long-pressed point was; privacy note (coordinates go to Photon) is in the README "Address lookup".
