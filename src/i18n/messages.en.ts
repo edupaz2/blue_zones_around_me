@@ -32,6 +32,7 @@ export const en = {
   'search.label': 'Search destination',
   'search.noResults': 'No results.',
   'search.unavailable': "Search isn't available right now.",
+  'search.close': 'Close suggestions',
   'search.hint': 'You can also long-press the map to set a destination.',
   'settings.title': 'Settings',
   'settings.showVisitor': '{name} (blue) zones',

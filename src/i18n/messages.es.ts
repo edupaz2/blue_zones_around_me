@@ -33,6 +33,7 @@ export const es: Record<MessageKey, string> = {
   'search.label': 'Buscar destino',
   'search.noResults': 'Sin resultados.',
   'search.unavailable': 'La búsqueda no está disponible ahora mismo.',
+  'search.close': 'Cerrar sugerencias',
   'search.hint': 'También puedes mantener pulsado el mapa para elegir un destino.',
   'settings.title': 'Ajustes',
   'settings.showVisitor': '{name}',
