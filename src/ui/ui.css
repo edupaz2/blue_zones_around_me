@@ -39,6 +39,28 @@
   border-radius: 12px;
   background: #fff;
 }
+.search-popup {
+  position: relative;
+}
+.search-close {
+  position: absolute;
+  top: 4px;
+  right: 0;
+  z-index: 1;
+  width: 48px;
+  height: 48px;
+  font-size: 28px;
+  line-height: 1;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #444;
+}
+/* Leave room for the close button on the first row / the message. */
+.search-popup .suggestions li:first-child .suggestion,
+.search-popup .note {
+  padding-right: 52px;
+}
 .suggestions {
   list-style: none;
   margin: 4px 0 0;

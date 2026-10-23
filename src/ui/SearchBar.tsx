@@ -43,6 +43,16 @@ export default function SearchBar({ onSelect, search = searchPlaces }: Props) {
     return () => clearTimeout(timer);
   }, [query, search, t]);
 
+  const popupOpen = results.length > 0 || message !== null;
+
+  // Hide the popup but keep what was typed. Bumping `seq` makes a search that is still in
+  // flight stale, so its late response cannot bring the popup back.
+  const closePopup = () => {
+    seq.current++;
+    setResults([]);
+    setMessage(null);
+  };
+
   return (
     <div className="search">
       <input
@@ -52,30 +62,49 @@ export default function SearchBar({ onSelect, search = searchPlaces }: Props) {
         aria-label={t('search.label')}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && popupOpen) {
+            // Without this a type="search" field also wipes its text on Escape.
+            e.preventDefault();
+            closePopup();
+          }
+        }}
       />
-      {results.length > 0 && (
-        <ul className="suggestions">
-          {results.map((r, i) => (
-            <li key={`${r.label}-${i}`}>
-              <button
-                type="button"
-                className="suggestion"
-                onClick={() => {
-                  setResults([]);
-                  setQuery('');
-                  onSelect(r);
-                }}
-              >
-                {r.label}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {message && (
-        <p className="note" role="status">
-          {message} {t('search.hint')}
-        </p>
+      {popupOpen && (
+        <div className="search-popup">
+          <button
+            type="button"
+            className="search-close"
+            aria-label={t('search.close')}
+            onClick={closePopup}
+          >
+            ×
+          </button>
+          {results.length > 0 && (
+            <ul className="suggestions">
+              {results.map((r, i) => (
+                <li key={`${r.label}-${i}`}>
+                  <button
+                    type="button"
+                    className="suggestion"
+                    onClick={() => {
+                      setResults([]);
+                      setQuery('');
+                      onSelect(r);
+                    }}
+                  >
+                    {r.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {message && (
+            <p className="note" role="status">
+              {message} {t('search.hint')}
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
