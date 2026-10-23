@@ -11,6 +11,8 @@ interface Props {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onGo: (id: string) => void;
+  /** Navigate to the destination pin itself (destination searches only). */
+  onGoToPin?: () => void;
   onWiden: () => void;
   onClose: () => void;
 }
@@ -29,6 +31,7 @@ export default function CandidatePanel({
   selectedId,
   onSelect,
   onGo,
+  onGoToPin,
   onWiden,
   onClose,
 }: Props) {
@@ -47,11 +50,28 @@ export default function CandidatePanel({
       </button>
     </div>
   );
+  const pinCard = onGoToPin && (
+    <div className="card card-pin" data-testid="pin-card">
+      <div className="card-main card-main-static">
+        <span className="card-name">{t('pin.title')}</span>
+        <span className="card-sub">{t('pin.sub')}</span>
+      </div>
+      <button
+        type="button"
+        className="btn btn-primary"
+        aria-label={t('pin.goLabel')}
+        onClick={onGoToPin}
+      >
+        {t('card.go')}
+      </button>
+    </div>
+  );
   const cards = result.ranked.slice(0, 3);
   if (cards.length === 0) {
     return (
       <section className="panel" aria-label={t('panel.label')}>
         {header}
+        {pinCard}
         <p className="panel-empty">{t('panel.noMore')}</p>
         <button type="button" className="btn btn-primary" onClick={onWiden}>
           {t('panel.widen')}
@@ -62,6 +82,7 @@ export default function CandidatePanel({
   return (
     <section className="panel" aria-label={t('panel.label')}>
       {header}
+      {pinCard}
       <ul className="cards">
         {cards.map(({ zone, distanceM }) => (
           <li

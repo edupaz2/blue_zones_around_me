@@ -25,7 +25,8 @@ function Ready({ data }: { data: ZoneData }) {
   const { session, settings, position, locationStatus, ranked, dispatch, setSettings, widen } =
     useAppState(data);
   const [pickedId, setSelectedId] = useState<string | null>(null);
-  const [pendingGoId, setPendingGoId] = useState<string | null>(null);
+  // `null` = none; 'pin' = the destination pin itself; otherwise a zone id.
+  const [pendingGo, setPendingGo] = useState<{ pin: true } | { zoneId: string } | null>(null);
   // Derived: a selection only counts while that zone is still in the list.
   const selectedId = ranked.ranked.some((r) => r.zone.id === pickedId) ? pickedId : null;
   const [pointError, setPointError] = useState(false);
@@ -75,20 +76,36 @@ function Ready({ data }: { data: ZoneData }) {
     openNavigation(buildNavigationUrl(app, zone.target));
   };
 
+  // Navigates to the exact destination pin. The session stays `choosing`: the pin is
+  // not a parking zone, so there is nothing to mark as tried.
+  const launchPin = (app: 'google' | 'waze') => {
+    const o = session.origin;
+    if (session.status !== 'choosing' || o?.mode !== 'destination') return;
+    track(app === 'google' ? 'go-google' : 'go-waze');
+    openNavigation(buildNavigationUrl(app, o.point));
+  };
+
   const onGo = (zoneId: string) => {
-    if (settings.navApp === null) setPendingGoId(zoneId);
+    if (settings.navApp === null) setPendingGo({ zoneId });
     else launch(zoneId, settings.navApp);
   };
 
+  const onGoToPin = () => {
+    if (settings.navApp === null) setPendingGo({ pin: true });
+    else launchPin(settings.navApp);
+  };
+
   const onChooseApp = (app: 'google' | 'waze') => {
-    const zoneId = pendingGoId;
-    setPendingGoId(null);
+    const pending = pendingGo;
+    setPendingGo(null);
     setSettings({ ...settings, navApp: app });
-    if (zoneId !== null) launch(zoneId, app);
+    if (pending === null) return;
+    if ('pin' in pending) launchPin(app);
+    else launch(pending.zoneId, app);
   };
 
   // A mistaken Go: `go` was never dispatched, so the session is still `choosing`.
-  const onCancelChooser = useCallback(() => setPendingGoId(null), []);
+  const onCancelChooser = useCallback(() => setPendingGo(null), []);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -177,6 +194,7 @@ function Ready({ data }: { data: ZoneData }) {
             selectedId={selectedId}
             onSelect={setSelectedId}
             onGo={onGo}
+            onGoToPin={session.origin.mode === 'destination' ? onGoToPin : undefined}
             onWiden={() => {
               track('widen');
               widen();
@@ -224,7 +242,7 @@ function Ready({ data }: { data: ZoneData }) {
           onClose={() => setSettingsOpen(false)}
         />
       )}
-      {pendingGoId !== null && <NavAppChooser onChoose={onChooseApp} onCancel={onCancelChooser} />}
+      {pendingGo !== null && <NavAppChooser onChoose={onChooseApp} onCancel={onCancelChooser} />}
     </main>
   );
 }

@@ -55,6 +55,27 @@ describe('formatDistance', () => {
 });
 
 describe('CandidatePanel', () => {
+  it('shows a pin Go only when onGoToPin is given', () => {
+    const onGoToPin = vi.fn();
+    render(
+      <CandidatePanel
+        result={result}
+        mode="destination"
+        selectedId={null}
+        onSelect={vi.fn()}
+        onGo={vi.fn()}
+        onGoToPin={onGoToPin}
+        onWiden={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Go to the pin' }));
+    expect(onGoToPin).toHaveBeenCalled();
+    cleanup();
+    setup();
+    expect(screen.queryByRole('button', { name: 'Go to the pin' })).toBeNull();
+  });
+
   it('falls back to the neighbourhood when a zone has no streets', () => {
     setup({ radiusM: 800, ranked: [{ zone: zone('n', [], 4), distanceM: 100 }] });
     expect(screen.getByRole('button', { name: 'Show Centro on map' })).toBeInTheDocument();
