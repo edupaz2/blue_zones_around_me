@@ -26,6 +26,7 @@ export const en = {
   'found.title': 'Found a spot?',
   'found.yes': 'Yes',
   'found.next': 'No, next zone',
+  'found.close': 'Close',
   'nav.title': 'Navigate with',
   'nav.cancel': 'Cancel',
   'nav.hint': 'You can change this later in settings.',

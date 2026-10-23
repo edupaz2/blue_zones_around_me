@@ -224,6 +224,24 @@
   margin: 0;
   font-size: 20px;
 }
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.modal-close {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  margin: -8px -8px -8px 0;
+  font-size: 28px;
+  line-height: 1;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #444;
+}
 .top-row {
   display: flex;
   align-items: flex-start;

@@ -7,7 +7,7 @@ afterEach(cleanup);
 
 describe('FoundSpotPrompt', () => {
   it('shows the question with Yes and No buttons and focuses the first', () => {
-    render(<FoundSpotPrompt onFound={() => {}} onNext={() => {}} />);
+    render(<FoundSpotPrompt onFound={() => {}} onNext={() => {}} onClose={() => {}} />);
     const dialog = screen.getByRole('dialog');
     expect(dialog).toHaveAttribute('aria-modal', 'true');
     expect(screen.getByText('Found a spot?')).toBeInTheDocument();
@@ -18,11 +18,24 @@ describe('FoundSpotPrompt', () => {
   it('calls onFound and onNext', () => {
     const onFound = vi.fn();
     const onNext = vi.fn();
-    render(<FoundSpotPrompt onFound={onFound} onNext={onNext} />);
+    render(<FoundSpotPrompt onFound={onFound} onNext={onNext} onClose={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
     expect(onFound).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole('button', { name: 'No, next zone' }));
     expect(onNext).toHaveBeenCalledTimes(1);
+  });
+
+  it('can be dismissed with the close button or Escape', () => {
+    const onFound = vi.fn();
+    const onNext = vi.fn();
+    const onClose = vi.fn();
+    render(<FoundSpotPrompt onFound={onFound} onNext={onNext} onClose={onClose} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(2);
+    expect(onFound).not.toHaveBeenCalled();
+    expect(onNext).not.toHaveBeenCalled();
   });
 });
 

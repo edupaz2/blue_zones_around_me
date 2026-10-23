@@ -213,6 +213,7 @@ function Ready({ data }: { data: ZoneData }) {
             track('found-next');
             onNext();
           }}
+          onClose={() => dispatch({ type: 'dismiss', now: Date.now() })}
         />
       )}
       {settingsOpen && (
