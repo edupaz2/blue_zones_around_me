@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { track } from './analytics';
 import { madridConfig } from './cities/madrid/config';
 import { inBounds } from './core/bounds';
 import { buildNavigationUrl } from './core/handoff';
@@ -40,6 +41,7 @@ function Ready({ data }: { data: ZoneData }) {
       setPointError(true);
       return;
     }
+    track('map-long-press');
     startDestination(p, t('app.selectedPoint'));
   };
 
@@ -50,6 +52,7 @@ function Ready({ data }: { data: ZoneData }) {
     const next = dispatch({ type: 'go', zoneId, now: Date.now() });
     // The reducer ignores `go` for an expired/non-choosing session: then do not navigate.
     if (next.status !== 'driving') return;
+    track(app === 'google' ? 'go-google' : 'go-waze');
     openNavigation(buildNavigationUrl(app, zone.target));
   };
 
@@ -119,7 +122,12 @@ function Ready({ data }: { data: ZoneData }) {
       />
       <div className="overlay-top">
         <div className="top-row">
-          <SearchBar onSelect={(r) => startDestination(r.point, r.label)} />
+          <SearchBar
+            onSelect={(r) => {
+              track('search-address');
+              startDestination(r.point, r.label);
+            }}
+          />
           <button
             type="button"
             className="settings-btn"
@@ -144,8 +152,12 @@ function Ready({ data }: { data: ZoneData }) {
             selectedId={selectedId}
             onSelect={setSelectedId}
             onGo={onGo}
-            onWiden={widen}
+            onWiden={() => {
+              track('widen');
+              widen();
+            }}
             onClose={() => {
+              track('close-results');
               setSelectedId(null);
               dispatch({ type: 'cancel', now: Date.now() });
             }}
@@ -156,6 +168,7 @@ function Ready({ data }: { data: ZoneData }) {
             position={position}
             locationStatus={locationStatus}
             onPress={(origin) => {
+              track('around-me');
               setPointError(false);
               setSelectedId(null);
               dispatch({ type: 'start', origin, now: Date.now() });
@@ -165,8 +178,14 @@ function Ready({ data }: { data: ZoneData }) {
       </div>
       {session.status === 'driving' && (
         <FoundSpotPrompt
-          onFound={() => dispatch({ type: 'found', now: Date.now() })}
-          onNext={onNext}
+          onFound={() => {
+            track('found-yes');
+            dispatch({ type: 'found', now: Date.now() });
+          }}
+          onNext={() => {
+            track('found-next');
+            onNext();
+          }}
         />
       )}
       {settingsOpen && (

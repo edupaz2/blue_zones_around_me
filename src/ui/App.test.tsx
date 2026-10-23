@@ -1,5 +1,6 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
 import { loadSession, loadSettings, saveSession, saveSettings } from '../adapters/storage';
 import type { CandidateZone, SessionState, Stretch } from '../core/types';
 import App from '../App';
@@ -507,5 +508,141 @@ describe('App settings', () => {
     render(<App />);
     await screen.findByTestId('app-ready');
     expect(screen.getByText(/Consider refreshing it/)).toBeInTheDocument();
+  });
+});
+
+describe('App analytics', () => {
+  const EVENTS = [
+    'around-me',
+    'search-address',
+    'map-long-press',
+    'go-google',
+    'go-waze',
+    'found-yes',
+    'found-next',
+    'widen',
+    'close-results',
+  ];
+  let count: Mock<(vars: { path: string; title: string; event: boolean }) => void>;
+  beforeEach(() => {
+    count = vi.fn<(vars: { path: string; title: string; event: boolean }) => void>();
+    window.goatcounter = { count };
+  });
+  afterEach(() => {
+    delete window.goatcounter;
+  });
+
+  const paths = () => count.mock.calls.map(([arg]) => (arg as { path: string }).path);
+
+  // Privacy: whatever the user did, only constant event names leave the app.
+  afterEach(() => {
+    for (const [arg] of count.mock.calls) {
+      expect(Object.keys(arg as object).sort()).toEqual(['event', 'path', 'title']);
+      expect((arg as { event: boolean }).event).toBe(true);
+      expect(EVENTS).toContain((arg as { path: string }).path);
+      expect(JSON.stringify(arg)).not.toMatch(/40\.4|-3\.7|Sol|CALLE|Centro|z1|z2/);
+    }
+  });
+
+  it('Around me press counts around-me', async () => {
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      geolocation: {
+        watchPosition: (ok: (p: unknown) => void) => {
+          ok({ coords: { latitude: 40.4168, longitude: -3.7038, accuracy: 5 } });
+          return 1;
+        },
+        clearWatch: () => {},
+      },
+    });
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    const around = await screen.findByRole('button', { name: 'Around me' });
+    await waitFor(() => expect(around).toBeEnabled());
+    fireEvent.click(around);
+    expect(paths()).toEqual(['around-me']);
+    expect(count.mock.calls[0]![0]).toMatchObject({ event: true });
+  });
+
+  it('choosing an address counts search-address', async () => {
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByTestId('app-ready');
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'sol' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Puerta del Sol' }));
+    await screen.findByRole('region', { name: 'Blue zones' });
+    expect(paths()).toEqual(['search-address']);
+  });
+
+  it('a long-press counts only when it starts a search', async () => {
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByTestId('app-ready');
+    act(() => mapProps.onLongPress!({ lat: 41.4, lng: 2.17 }));
+    expect(count).not.toHaveBeenCalled();
+    act(() => mapProps.onLongPress!({ lat: 40.4168, lng: -3.7038 }));
+    expect(paths()).toEqual(['map-long-press']);
+  });
+
+  it('closing the results counts close-results', async () => {
+    saveSession(sessionOf({}));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByRole('region', { name: 'Blue zones' });
+    fireEvent.click(screen.getByRole('button', { name: 'Close results' }));
+    expect(paths()).toEqual(['close-results']);
+  });
+
+  it('Widen search counts widen', async () => {
+    saveSession(sessionOf({ origin: { mode: 'destination', point: { lat: 41, lng: -3 } } }));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Widen search' }));
+    expect(paths()).toEqual(['widen']);
+  });
+
+  it('Go with a saved Google app counts go-google', async () => {
+    saveSettings({ showVisitor: true, showResident: true, navApp: 'google' });
+    saveSession(sessionOf({}));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByRole('region', { name: 'Blue zones' });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Go' })[0]!);
+    expect(paths()).toEqual(['go-google']);
+  });
+
+  it('choosing Waze in the chooser counts go-waze', async () => {
+    saveSession(sessionOf({}));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByRole('region', { name: 'Blue zones' });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Go' })[0]!);
+    expect(count).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Waze' }));
+    expect(paths()).toEqual(['go-waze']);
+  });
+
+  it('Go on an expired session counts nothing', async () => {
+    saveSettings({ showVisitor: true, showResident: true, navApp: 'google' });
+    saveSession(sessionOf({}));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByRole('region', { name: 'Blue zones' });
+    vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 91 * 60 * 1000);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Go' })[0]!);
+    expect(count).not.toHaveBeenCalled();
+  });
+
+  it('found-a-spot answers count found-yes and found-next', async () => {
+    saveSession(sessionOf({ status: 'driving', zoneId: 'z1' }));
+    vi.stubGlobal('fetch', mockFetchOk());
+    const first = render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes' }));
+    expect(paths()).toEqual(['found-yes']);
+    first.unmount();
+    saveSession(sessionOf({ status: 'driving', zoneId: 'z1' }));
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'No, next zone' }));
+    expect(paths()).toEqual(['found-yes', 'found-next']);
   });
 });
