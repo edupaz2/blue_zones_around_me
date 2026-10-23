@@ -82,6 +82,7 @@ function Ready({ data }: { data: ZoneData }) {
   }, []);
 
   const origin = session.origin;
+  const panelShown = session.status === 'choosing' && origin !== null;
   const triedKey = session.tried.join(',');
   const fitTo = useMemo(() => {
     if (!origin || session.status !== 'choosing') return null;
@@ -136,7 +137,7 @@ function Ready({ data }: { data: ZoneData }) {
         )}
       </div>
       <div className="overlay-bottom" data-testid="overlay-bottom" ref={bottomRef}>
-        {session.status === 'choosing' && session.origin && (
+        {panelShown && session.origin && (
           <CandidatePanel
             result={ranked}
             mode={session.origin.mode}
@@ -144,17 +145,23 @@ function Ready({ data }: { data: ZoneData }) {
             onSelect={setSelectedId}
             onGo={onGo}
             onWiden={widen}
+            onClose={() => {
+              setSelectedId(null);
+              dispatch({ type: 'cancel', now: Date.now() });
+            }}
           />
         )}
-        <AroundMeButton
-          position={position}
-          locationStatus={locationStatus}
-          onPress={(origin) => {
-            setPointError(false);
-            setSelectedId(null);
-            dispatch({ type: 'start', origin, now: Date.now() });
-          }}
-        />
+        {!panelShown && (
+          <AroundMeButton
+            position={position}
+            locationStatus={locationStatus}
+            onPress={(origin) => {
+              setPointError(false);
+              setSelectedId(null);
+              dispatch({ type: 'start', origin, now: Date.now() });
+            }}
+          />
+        )}
       </div>
       {session.status === 'driving' && (
         <FoundSpotPrompt
