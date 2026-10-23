@@ -767,6 +767,31 @@ describe('App analytics', () => {
     expect(paths()).toEqual(['go-google']);
   });
 
+  it('Go to the pin navigates to the exact pin without leaving choosing', async () => {
+    saveSettings({ showVisitor: true, showResident: true, navApp: 'google' });
+    saveSession(
+      sessionOf({
+        origin: { mode: 'destination', point: { lat: 40.4501, lng: -3.7102 }, label: 'X' },
+      }),
+    );
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByRole('region', { name: 'Blue zones' });
+    fireEvent.click(screen.getByRole('button', { name: 'Go to the pin' }));
+    expect(nav.openNavigation).toHaveBeenCalledWith(
+      'https://www.google.com/maps/dir/?api=1&destination=40.4501,-3.7102',
+    );
+    expect(storedSession().status).toBe('choosing');
+  });
+
+  it('has no pin Go in around-me mode', async () => {
+    saveSession(sessionOf({}));
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByRole('region', { name: 'Blue zones' });
+    expect(screen.queryByRole('button', { name: 'Go to the pin' })).toBeNull();
+  });
+
   it('choosing Waze in the chooser counts go-waze', async () => {
     saveSession(sessionOf({}));
     vi.stubGlobal('fetch', mockFetchOk());

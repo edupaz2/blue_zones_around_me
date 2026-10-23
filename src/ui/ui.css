@@ -176,6 +176,12 @@
   border: 2px solid transparent;
   border-radius: 12px;
 }
+.card-pin {
+  margin-bottom: 8px;
+}
+.card-main-static {
+  justify-content: center;
+}
 .card-selected {
   border-color: #1f6feb;
 }
