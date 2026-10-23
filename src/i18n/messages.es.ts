@@ -44,4 +44,5 @@ export const es: Record<MessageKey, string> = {
   'settings.close': 'Cerrar',
   'stale.banner': 'Los datos de zonas son del {date}. Conviene actualizarlos.',
   'map.recenter': 'Recentrar',
+  'map.destinationPin': 'Destino',
 };

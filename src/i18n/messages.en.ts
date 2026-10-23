@@ -43,6 +43,7 @@ export const en = {
   'settings.close': 'Close',
   'stale.banner': 'Zone data is from {date}. Consider refreshing it.',
   'map.recenter': 'Recenter',
+  'map.destinationPin': 'Destination',
 } as const;
 
 export type MessageKey = keyof typeof en;

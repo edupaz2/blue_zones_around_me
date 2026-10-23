@@ -5,8 +5,15 @@ import type { CandidateZone, SessionState } from '../core/types';
 import App from '../App';
 import { I18nProvider } from '../i18n';
 
-vi.mock('./MapView', () => ({ default: () => <div data-testid="map" /> }));
-vi.mock('../adapters/geocoder', () => ({ searchPlaces: vi.fn(() => Promise.resolve([])) }));
+vi.mock('./MapView', () => ({
+  default: ({ destinationPin }: { destinationPin?: unknown }) => (
+    <div data-testid="map" data-pin={destinationPin ? 'on' : 'off'} />
+  ),
+}));
+vi.mock('../adapters/geocoder', () => ({
+  searchPlaces: vi.fn(() => Promise.resolve([])),
+  reversePlace: vi.fn(() => new Promise(() => {})),
+}));
 
 // About 1.2 km north of the origin used by `choosing` below.
 const zone: CandidateZone = {

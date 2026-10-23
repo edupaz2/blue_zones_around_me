@@ -74,3 +74,10 @@ describe('catalog parity', () => {
     }
   });
 });
+
+describe('destination pin name', () => {
+  it('is localised', () => {
+    expect(en['map.destinationPin']).toBe('Destination');
+    expect(es['map.destinationPin']).toBe('Destino');
+  });
+});

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { reversePlace } from './adapters/geocoder';
 import { track } from './analytics';
 import { madridConfig } from './cities/madrid/config';
 import { inBounds } from './core/bounds';
@@ -30,7 +31,18 @@ function Ready({ data }: { data: ZoneData }) {
   const [pointError, setPointError] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // At most one reverse lookup is in flight: any new search, the close button
+  // and unmount abort it. (The reducer also ignores a late answer for a point that
+  // is no longer the open destination search.)
+  const lookupRef = useRef<AbortController | null>(null);
+  const abortLookup = useCallback(() => {
+    lookupRef.current?.abort();
+    lookupRef.current = null;
+  }, []);
+  useEffect(() => abortLookup, [abortLookup]);
+
   const startDestination = (point: LatLng, label: string) => {
+    abortLookup();
     setPointError(false);
     setSelectedId(null);
     dispatch({ type: 'start', origin: { mode: 'destination', point, label }, now: Date.now() });
@@ -43,6 +55,13 @@ function Ready({ data }: { data: ZoneData }) {
     }
     track('map-long-press');
     startDestination(p, t('app.selectedPoint'));
+    // Never waits for the network: the search is already running with the fallback label.
+    const ctl = new AbortController();
+    lookupRef.current = ctl;
+    void reversePlace(p, fetch, { signal: ctl.signal }).then((label) => {
+      if (label === null || ctl.signal.aborted) return;
+      dispatch({ type: 'relabel', point: p, label, now: Date.now() });
+    });
   };
 
   const launch = (zoneId: string, app: 'google' | 'waze') => {
@@ -86,6 +105,8 @@ function Ready({ data }: { data: ZoneData }) {
 
   const origin = session.origin;
   const panelShown = session.status === 'choosing' && origin !== null;
+  const destinationPin =
+    origin?.mode === 'destination' && session.status !== 'idle' ? origin.point : null;
   const triedKey = session.tried.join(',');
   const fitTo = useMemo(() => {
     if (!origin || session.status !== 'choosing') return null;
@@ -119,6 +140,7 @@ function Ready({ data }: { data: ZoneData }) {
         onLongPress={onLongPress}
         recenterSignal={0}
         fitTo={fitTo}
+        destinationPin={destinationPin}
       />
       <div className="overlay-top">
         <div className="top-row">
@@ -149,6 +171,9 @@ function Ready({ data }: { data: ZoneData }) {
           <CandidatePanel
             result={ranked}
             mode={session.origin.mode}
+            destinationLabel={
+              session.origin.mode === 'destination' ? session.origin.label : undefined
+            }
             selectedId={selectedId}
             onSelect={setSelectedId}
             onGo={onGo}
@@ -158,6 +183,7 @@ function Ready({ data }: { data: ZoneData }) {
             }}
             onClose={() => {
               track('close-results');
+              abortLookup();
               setSelectedId(null);
               dispatch({ type: 'cancel', now: Date.now() });
             }}
@@ -169,6 +195,7 @@ function Ready({ data }: { data: ZoneData }) {
             locationStatus={locationStatus}
             onPress={(origin) => {
               track('around-me');
+              abortLookup();
               setPointError(false);
               setSelectedId(null);
               dispatch({ type: 'start', origin, now: Date.now() });

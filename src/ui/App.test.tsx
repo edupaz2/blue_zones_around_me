@@ -12,7 +12,9 @@ const mapProps = vi.hoisted(() => ({
   onLongPress: null as null | ((p: { lat: number; lng: number }) => void),
   highlightedZoneId: undefined as string | null | undefined,
   settings: undefined as undefined | { showVisitor: boolean; showResident: boolean },
+  destinationPin: undefined as undefined | null | { lat: number; lng: number },
 }));
+const geo = vi.hoisted(() => ({ reversePlace: vi.fn() }));
 const nav = vi.hoisted(() => ({ openNavigation: vi.fn() }));
 vi.mock('./openNavigation', () => nav);
 vi.mock('./MapView', () => ({
@@ -20,7 +22,9 @@ vi.mock('./MapView', () => ({
     onLongPress: (p: { lat: number; lng: number }) => void;
     highlightedZoneId: string | null;
     settings: { showVisitor: boolean; showResident: boolean };
+    destinationPin?: { lat: number; lng: number } | null;
   }) => {
+    mapProps.destinationPin = props.destinationPin;
     mapProps.settings = props.settings;
     mapProps.onLongPress = props.onLongPress;
     mapProps.highlightedZoneId = props.highlightedZoneId;
@@ -29,6 +33,7 @@ vi.mock('./MapView', () => ({
 }));
 
 vi.mock('../adapters/geocoder', () => ({
+  reversePlace: geo.reversePlace,
   searchPlaces: vi.fn(() =>
     Promise.resolve([{ label: 'Puerta del Sol', point: { lat: 40.4168, lng: -3.7038 } }]),
   ),
@@ -71,6 +76,9 @@ function mockFetchOk() {
 
 beforeEach(() => {
   vi.stubGlobal('navigator', { ...navigator, geolocation: undefined });
+  geo.reversePlace.mockReset();
+  geo.reversePlace.mockImplementation(() => new Promise(() => {}));
+  mapProps.destinationPin = undefined;
 });
 afterEach(() => {
   cleanup();
@@ -143,6 +151,154 @@ describe('App long-press', () => {
     await screen.findByTestId('app-ready');
     act(() => mapProps.onLongPress!({ lat: 40.4168, lng: -3.7038 }));
     expect(await screen.findByRole('region', { name: 'Blue zones' })).toBeInTheDocument();
+  });
+});
+
+describe('App destination address and pin', () => {
+  const A = { lat: 40.4168, lng: -3.7038 };
+  const B = { lat: 40.418, lng: -3.705 };
+  const deferred = () => {
+    let resolve!: (v: string | null) => void;
+    const promise = new Promise<string | null>((r) => (resolve = r));
+    return { promise, resolve };
+  };
+  const addressNode = () => screen.queryByText(/Selected point|Calle Mayor|Puerta del Sol/);
+
+  async function ready() {
+    vi.stubGlobal('fetch', mockFetchOk());
+    render(<App />);
+    await screen.findByTestId('app-ready');
+  }
+
+  it('long-press shows the fallback label and the pin at once, then the address', async () => {
+    const d = deferred();
+    geo.reversePlace.mockReturnValueOnce(d.promise);
+    await ready();
+    act(() => mapProps.onLongPress!(A));
+    expect(await screen.findByRole('region', { name: 'Blue zones' })).toBeInTheDocument();
+    expect(screen.getByText('Selected point')).toBeInTheDocument();
+    expect(mapProps.destinationPin).toEqual(A);
+    expect(geo.reversePlace).toHaveBeenCalledTimes(1);
+    expect(geo.reversePlace.mock.calls[0]![0]).toEqual(A);
+    await act(async () => d.resolve('Calle Mayor 1, Centro, Madrid'));
+    expect(screen.getByText('Calle Mayor 1, Centro, Madrid')).toBeInTheDocument();
+    expect(screen.queryByText('Selected point')).not.toBeInTheDocument();
+    expect(localStorage.getItem('bza:v1:session')).toContain('Calle Mayor 1');
+  });
+
+  it('a failing lookup keeps the fallback label', async () => {
+    geo.reversePlace.mockResolvedValueOnce(null);
+    await ready();
+    act(() => mapProps.onLongPress!(A));
+    await screen.findByRole('region', { name: 'Blue zones' });
+    await act(async () => {});
+    expect(screen.getByText('Selected point')).toBeInTheDocument();
+  });
+
+  it('a stale response for an earlier long-press cannot relabel the later one', async () => {
+    const dA = deferred();
+    const dB = deferred();
+    geo.reversePlace.mockReturnValueOnce(dA.promise).mockReturnValueOnce(dB.promise);
+    await ready();
+    act(() => mapProps.onLongPress!(A));
+    act(() => mapProps.onLongPress!(B));
+    expect(geo.reversePlace.mock.calls[0]![2].signal.aborted).toBe(true);
+    await act(async () => dA.resolve('Calle Mayor 1'));
+    expect(screen.getByText('Selected point')).toBeInTheDocument();
+    expect(screen.queryByText('Calle Mayor 1')).not.toBeInTheDocument();
+    expect(mapProps.destinationPin).toEqual(B);
+    await act(async () => dB.resolve('Calle Mayor 2'));
+    expect(screen.getByText('Calle Mayor 2')).toBeInTheDocument();
+  });
+
+  it('closing removes the pin and the label, and a late response does not bring it back', async () => {
+    const d = deferred();
+    geo.reversePlace.mockReturnValueOnce(d.promise);
+    await ready();
+    act(() => mapProps.onLongPress!(A));
+    await screen.findByRole('region', { name: 'Blue zones' });
+    const signal = geo.reversePlace.mock.calls[0]![2].signal as AbortSignal;
+    fireEvent.click(screen.getByRole('button', { name: 'Close results' }));
+    expect(signal.aborted).toBe(true);
+    expect(mapProps.destinationPin).toBeNull();
+    expect(addressNode()).not.toBeInTheDocument();
+    await act(async () => d.resolve('Calle Mayor 1'));
+    expect(addressNode()).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Blue zones' })).not.toBeInTheDocument();
+    expect(mapProps.destinationPin).toBeNull();
+    expect(localStorage.getItem('bza:v1:session') ?? '').not.toContain('Calle Mayor');
+  });
+
+  it('a late response after another search started elsewhere is ignored', async () => {
+    const d = deferred();
+    geo.reversePlace.mockReturnValueOnce(d.promise);
+    await ready();
+    act(() => mapProps.onLongPress!(A));
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'sol' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Puerta del Sol' }));
+    await act(async () => d.resolve('Calle Mayor 1'));
+    expect(screen.getByText('Puerta del Sol')).toBeInTheDocument();
+    expect(screen.queryByText('Calle Mayor 1')).not.toBeInTheDocument();
+  });
+
+  it('an address chosen from the suggestions shows its label and sets the pin', async () => {
+    await ready();
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'sol' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Puerta del Sol' }));
+    await screen.findByRole('region', { name: 'Blue zones' });
+    const header = document.querySelector('.panel-header')!;
+    expect(header).toHaveTextContent('Puerta del Sol');
+    expect(mapProps.destinationPin).toEqual({ lat: 40.4168, lng: -3.7038 });
+    expect(geo.reversePlace).not.toHaveBeenCalled();
+  });
+
+  it('Around me shows no address and no pin', async () => {
+    saveSession({
+      status: 'choosing',
+      origin: { mode: 'around', point: A },
+      zoneId: null,
+      tried: [],
+      lastActivityAt: Date.now(),
+    });
+    await ready();
+    await screen.findByRole('region', { name: 'Blue zones' });
+    expect(document.querySelector('.panel-header')).toHaveTextContent(/^×$/);
+    expect(mapProps.destinationPin).toBeNull();
+  });
+
+  it('keeps the pin while driving to a destination search', async () => {
+    saveSession({
+      status: 'driving',
+      origin: { mode: 'destination', point: A, label: 'Somewhere' },
+      zoneId: 'z1',
+      tried: [],
+      lastActivityAt: Date.now(),
+    });
+    await ready();
+    await screen.findByRole('dialog');
+    expect(mapProps.destinationPin).toEqual(A);
+  });
+
+  it('no pin while idle', async () => {
+    await ready();
+    expect(mapProps.destinationPin).toBeNull();
+  });
+
+  it('an out-of-bounds long-press does no lookup and shows no pin', async () => {
+    await ready();
+    act(() => mapProps.onLongPress!({ lat: 41.4, lng: 2.17 }));
+    expect(geo.reversePlace).not.toHaveBeenCalled();
+    expect(mapProps.destinationPin).toBeNull();
+  });
+
+  it('aborts a pending lookup on unmount', async () => {
+    vi.stubGlobal('fetch', mockFetchOk());
+    const view = render(<App />);
+    await screen.findByTestId('app-ready');
+    act(() => mapProps.onLongPress!(A));
+    const signal = geo.reversePlace.mock.calls[0]![2].signal as AbortSignal;
+    view.unmount();
+    expect(signal.aborted).toBe(true);
   });
 });
 

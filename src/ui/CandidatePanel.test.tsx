@@ -25,9 +25,21 @@ const result: RankResult = {
   ],
 };
 
-function setup(r: RankResult = result, mode: 'destination' | 'around' = 'destination') {
+function setup(
+  r: RankResult = result,
+  mode: 'destination' | 'around' = 'destination',
+  destinationLabel?: string,
+) {
   const fns = { onSelect: vi.fn(), onGo: vi.fn(), onWiden: vi.fn(), onClose: vi.fn() };
-  render(<CandidatePanel result={r} mode={mode} selectedId={null} {...fns} />);
+  render(
+    <CandidatePanel
+      result={r}
+      mode={mode}
+      selectedId={null}
+      destinationLabel={destinationLabel}
+      {...fns}
+    />,
+  );
   return fns;
 }
 
@@ -90,5 +102,25 @@ describe('CandidatePanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close results' }));
     expect(f.onClose).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: 'Widen search' })).toBeInTheDocument();
+  });
+
+  it('shows the destination label in the header, with the list and when empty', () => {
+    const f = setup(result, 'destination', 'Calle Mayor 1, Centro, Madrid');
+    const header = document.querySelector('.panel-header')!;
+    expect(header).toHaveTextContent('Calle Mayor 1, Centro, Madrid');
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+    fireEvent.click(screen.getByRole('button', { name: 'Close results' }));
+    expect(f.onClose).toHaveBeenCalledTimes(1);
+    cleanup();
+    setup({ ranked: [], radiusM: null }, 'destination', 'Calle Mayor 1');
+    expect(document.querySelector('.panel-header')).toHaveTextContent('Calle Mayor 1');
+  });
+
+  it('shows no address text without a destination label', () => {
+    setup(result, 'around');
+    expect(document.querySelector('.panel-header')).toHaveTextContent(/^×$/);
+    cleanup();
+    setup({ ranked: [], radiusM: null });
+    expect(document.querySelector('.panel-header')).toHaveTextContent(/^×$/);
   });
 });
