@@ -15,6 +15,11 @@ describe('detectLocale', () => {
     [['en-US', 'es-ES'], 'en'],
     [['de', 'fr'], 'en'],
     [['fr'], 'en'],
+    // Underscore separators and other Iberian languages must not be mistaken for Spanish.
+    [['es_ES'], 'es'],
+    [['eu'], 'en'],
+    [['ca-ES'], 'en'],
+    [['gl', 'es-ES'], 'es'],
   ] as const)('%j -> %s', (languages, expected) => {
     expect(detectLocale(languages)).toBe(expected);
   });

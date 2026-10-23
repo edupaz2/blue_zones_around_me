@@ -10,7 +10,7 @@ export const es: Record<MessageKey, string> = {
   'app.selectedPoint': 'Punto seleccionado',
   'around.button': 'Cerca de mí',
   'around.enableLocation':
-    'Activa la ubicación para usar esto. Safari en iOS: Ajustes > Privacidad y seguridad > Localización > Sitios web de Safari. Chrome en Android: ajustes del sitio > Permisos > Ubicación.',
+    'Activa la ubicación para usar esta función. Safari en iOS: Ajustes > Privacidad y seguridad > Localización > Sitios web de Safari. Chrome en Android: ajustes del sitio > Permisos > Ubicación.',
   'around.waiting': 'Esperando tu ubicación…',
   'around.outside': 'Estás fuera del área SER de Madrid',
   'panel.label': 'Zonas azules',
@@ -40,6 +40,6 @@ export const es: Record<MessageKey, string> = {
   'settings.navApp': 'App de navegación',
   'settings.dataDate': 'Fecha de los datos: {date}',
   'settings.close': 'Cerrar',
-  'stale.banner': 'Los datos son del {date}. Conviene actualizarlos.',
+  'stale.banner': 'Los datos de zonas son del {date}. Conviene actualizarlos.',
   'map.recenter': 'Recentrar',
 };
