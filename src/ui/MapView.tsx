@@ -40,6 +40,10 @@ const HIGHLIGHT_ZOOM = 16;
 const PIN_COLOR = '#d32f2f';
 const TRIED_COLOR = '#9e9e9e';
 const CLUSTER_MAX_ZOOM = 14;
+const BARRIOS_URL = new URL(
+  `${import.meta.env.BASE_URL}data/madrid/barrios.geojson`,
+  window.location.href,
+).href;
 
 // One clustered GeoJSON source per kind, so every cluster bubble is single
 // coloured and blue/green are styled by the exact same expressions.
@@ -161,6 +165,43 @@ export default function MapView({
         if (setupDone) return;
         setupDone = true;
         const empty: FeatureCollection = { type: 'FeatureCollection', features: [] };
+        // Council barrio areas sit under every zone layer: district-coloured fill,
+        // outline, and "code + name" labels (skipped in fallback mode: no glyphs).
+        map.addSource('barrios', {
+          type: 'geojson',
+          data: BARRIOS_URL,
+          attribution: 'Barrios: Ayuntamiento de Madrid',
+        });
+        map.addLayer({
+          id: 'barrios-fill',
+          type: 'fill',
+          source: 'barrios',
+          paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.35 },
+        });
+        map.addLayer({
+          id: 'barrios-line',
+          type: 'line',
+          source: 'barrios',
+          paint: { 'line-color': '#ffffff', 'line-width': 1.5, 'line-opacity': 0.9 },
+        });
+        if (!fallbackMode)
+          map.addLayer({
+            id: 'barrios-label',
+            type: 'symbol',
+            source: 'barrios',
+            minzoom: 11,
+            maxzoom: 15.5,
+            layout: {
+              'text-field': ['concat', ['get', 'code'], '\n', ['get', 'name']],
+              'text-font': ['Noto Sans Bold'],
+              'text-size': 12,
+            },
+            paint: {
+              'text-color': '#37474f',
+              'text-halo-color': '#ffffff',
+              'text-halo-width': 1.5,
+            },
+          });
         for (const kind of STACK_ORDER) {
           const color = madridConfig.kinds[kind].color;
           const src = sourceId(kind);
