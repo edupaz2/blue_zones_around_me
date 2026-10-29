@@ -10,7 +10,7 @@ export const madridConfig: CityConfig = {
   bounds: [-3.755, 40.369, -3.629, 40.499],
   geocoderBbox: [-3.802, 40.333, -3.582, 40.535],
   kinds: {
-    visitor: { label: 'Zona azul', color: '#1565c0' }, // SER code 043000255
+    visitor: { label: 'Zona azul', color: '#0d3c8a' }, // SER code 043000255
     resident: { label: 'Zona verde', color: '#2e7d32' }, // SER code 077214010
     other: { label: 'Otras zonas SER', color: '#8a8a8a' },
   },

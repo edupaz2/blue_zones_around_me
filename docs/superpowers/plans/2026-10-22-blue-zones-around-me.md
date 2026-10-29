@@ -408,7 +408,7 @@ Tasks below were done after Tasks 1–18, in the same style. They record what wa
 
 - [x] Fit the map to origin + ranked targets (+ tried targets) on every new search and after "next zone"; follow mode off until Recenter.
 - [x] Recenter button placed from the measured bottom overlay height (`--overlay-bottom-h`, `ResizeObserver`); overlay `max-height: 50vh` with scroll.
-- [x] Blue drawn above green with a white halo, identical per-kind radius and opacity; tried zones grey `#9e9e9e` with a thicker stroke; `clusterMaxZoom` 14; colours `#1565c0` / `#2e7d32`.
+- [x] Blue drawn above green with a white halo, identical per-kind radius and opacity; tried zones grey `#9e9e9e` with a thicker stroke; `clusterMaxZoom` 14; colours `#0d3c8a` / `#2e7d32`.
 - [x] Fixes: no Photon `lang` (HTTP 400); defensive style with fallback; MapLibre worker bundled with `?worker&url` + `setWorkerUrl`; cluster tap turns follow off; Go on an expired/ignored session does not open the nav app; manifest description corrected.
 - [x] Key tests: `mapFit.test.ts` (bounds of points, empty); `mapStyle.test.ts` (ok, HTTP error, timeout, invalid JSON fall back); `geocoder.test.ts` (URL has bbox, no `lang`); `App.test.tsx` (Go on an expired session does not navigate); e2e asserts markers render and that cards still work when the style cannot load.
 
