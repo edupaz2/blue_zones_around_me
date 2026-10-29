@@ -57,6 +57,14 @@ export const en = {
   'settings.close': 'Close',
   'stale.banner': 'Zone data is from {date}. Consider refreshing it.',
   'map.recenter': 'Recenter',
+  'legend.open': 'Open map legend',
+  'legend.title': 'Legend',
+  'legend.close': 'Close legend',
+  'legend.visitor': 'Blue zone: parking for anyone, pay at the meter',
+  'legend.resident':
+    'Green zone: mainly for residents; visitors can stay a limited time at a higher rate',
+  'legend.meter': 'Parking meter (shown when zoomed in)',
+  'legend.clusters': 'Numbers group nearby spaces. Zoom in to see each one.',
   'map.destinationPin': 'Destination',
 } as const;
 

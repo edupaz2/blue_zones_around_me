@@ -10,6 +10,7 @@ import type { LatLng, Settings } from '../core/types';
 import { useI18n } from '../i18n';
 import { createLongPress } from './longPress';
 import type { PressPoint } from './longPress';
+import { METERS_COLOR } from './mapColors';
 import { boundsForPoints } from './mapFit';
 import { FALLBACK_STYLE, resolveStyle } from './mapStyle';
 import { stretchesToGeoJson } from './mapLayers';
@@ -221,7 +222,7 @@ export default function MapView({
           source: 'meters',
           minzoom: METERS_MIN_ZOOM,
           paint: {
-            'circle-color': '#455a64',
+            'circle-color': METERS_COLOR,
             'circle-radius': ['interpolate', ['linear'], ['zoom'], METERS_MIN_ZOOM, 3, 18, 5],
             'circle-stroke-width': 1,
             'circle-stroke-color': '#ffffff',

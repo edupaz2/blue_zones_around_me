@@ -59,5 +59,13 @@ export const es: Record<MessageKey, string> = {
   'settings.close': 'Cerrar',
   'stale.banner': 'Los datos de zonas son del {date}. Conviene actualizarlos.',
   'map.recenter': 'Recentrar',
+  'legend.open': 'Abrir la leyenda del mapa',
+  'legend.title': 'Leyenda',
+  'legend.close': 'Cerrar la leyenda',
+  'legend.visitor': 'Zona azul: aparcamiento para todos, se paga en el parquímetro',
+  'legend.resident':
+    'Zona verde: sobre todo para residentes; los visitantes pueden estar un tiempo limitado con tarifa más alta',
+  'legend.meter': 'Parquímetro (se ve al acercar el mapa)',
+  'legend.clusters': 'Los números agrupan plazas cercanas. Acerca el mapa para ver cada una.',
   'map.destinationPin': 'Destino',
 };

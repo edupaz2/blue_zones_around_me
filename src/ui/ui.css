@@ -317,7 +317,7 @@
   align-items: flex-start;
   gap: 8px;
 }
-.top-row > :first-child {
+.top-row > .search {
   flex: 1;
   min-width: 0;
 }
@@ -351,4 +351,62 @@
 }
 .setting-group legend {
   font-weight: 600;
+}
+
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.4);
+  pointer-events: auto;
+}
+.drawer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(320px, 85vw);
+  height: 100%;
+  box-sizing: border-box;
+  padding: max(16px, env(safe-area-inset-top)) 16px 16px;
+  background: #fff;
+  font-family: system-ui, sans-serif;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+}
+.drawer h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.legend-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+}
+.legend-dot {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+.legend-dot-meter {
+  width: 12px;
+  height: 12px;
+  margin: 0 3px;
+  border-width: 1px;
+}
+.legend-note {
+  margin: 0;
+  font-size: 13px;
+  color: #555;
 }
