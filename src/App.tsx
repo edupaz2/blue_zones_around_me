@@ -9,6 +9,7 @@ import { useI18n } from './i18n';
 import AroundMeButton from './ui/AroundMeButton';
 import CandidatePanel from './ui/CandidatePanel';
 import FoundSpotPrompt from './ui/FoundSpotPrompt';
+import LegendDrawer from './ui/LegendDrawer';
 import MapView from './ui/MapView';
 import NavAppChooser from './ui/NavAppChooser';
 import { openNavigation } from './ui/openNavigation';
@@ -31,6 +32,7 @@ function Ready({ data }: { data: ZoneData }) {
   const selectedId = ranked.ranked.some((r) => r.zone.id === pickedId) ? pickedId : null;
   const [pointError, setPointError] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
 
   // At most one reverse lookup is in flight: any new search, the close button
   // and unmount abort it. (The reducer also ignores a late answer for a point that
@@ -161,6 +163,14 @@ function Ready({ data }: { data: ZoneData }) {
       />
       <div className="overlay-top">
         <div className="top-row">
+          <button
+            type="button"
+            className="settings-btn"
+            aria-label={t('legend.open')}
+            onClick={() => setLegendOpen(true)}
+          >
+            ☰
+          </button>
           <SearchBar
             onSelect={(r) => {
               track('search-address');
@@ -234,6 +244,7 @@ function Ready({ data }: { data: ZoneData }) {
           onClose={() => dispatch({ type: 'dismiss', now: Date.now() })}
         />
       )}
+      {legendOpen && <LegendDrawer onClose={() => setLegendOpen(false)} />}
       {settingsOpen && (
         <SettingsSheet
           settings={settings}
