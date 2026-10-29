@@ -95,7 +95,7 @@ no space is found, gets the next-best untried zone in one tap.
   until the user taps recenter. The recenter button sits above the bottom
   overlay (positioned from its measured height) so it is never covered.
 - Blue and green markers use identical radius and opacity; blue is drawn above
-  green with a white stroke halo. Colours: blue `#1565c0`, green `#2e7d32`,
+  green with a white stroke halo. Colours: blue `#0d3c8a`, green `#2e7d32`,
   tried zones grey `#9e9e9e` with a thicker stroke. Clusters break up at zoom 14.
 
 ### 4.2 Choosing a zone
