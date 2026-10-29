@@ -192,6 +192,9 @@ the UI currently loads Madrid only, so a city picker would also be needed.
 - Barrio boundaries and codes: Ayuntamiento de Madrid, "Límite de Barrios de la Zona S.E.R."
   layer of its regulated-parking map service. Refresh `public/data/madrid/barrios.geojson`
   with `python3 scripts/build-barrios.py` (needs network; no Node required).
+- Parking meter locations: Ayuntamiento de Madrid, "Parquímetros" layer of its regulated-parking
+  map service. Refresh `public/data/madrid/parquimetros.geojson` with
+  `python3 scripts/build-parquimetros.py` (needs network; no Node required).
 - Map data: &copy; [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors,
   served as vector tiles by [OpenFreeMap](https://openfreemap.org), rendered with
   [MapLibre GL JS](https://maplibre.org).
