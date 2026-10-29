@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { formatNumber, useI18n } from '../i18n';
 import type { Locale } from '../i18n';
 import type { RankResult } from '../core/ranking';
 import type { CandidateZone, Origin } from '../core/types';
+import BusynessPopup from './BusynessPopup';
 
 interface Props {
   result: RankResult;
@@ -36,6 +38,7 @@ export default function CandidatePanel({
   onClose,
 }: Props) {
   const { t, locale } = useI18n();
+  const [busyZone, setBusyZone] = useState<CandidateZone | null>(null);
   const zoneName = (zone: CandidateZone): string => {
     if (zone.streets.length === 0) return zone.neighbourhood;
     const shown = zone.streets.slice(0, 2).join(', ');
@@ -105,12 +108,21 @@ export default function CandidatePanel({
                 {mode === 'around' ? t('card.fromYou') : t('card.fromDestination')}
               </span>
             </button>
+            <button
+              type="button"
+              className="btn btn-pct"
+              aria-label={t('card.busyness', { name: zoneName(zone) })}
+              onClick={() => setBusyZone(zone)}
+            >
+              %
+            </button>
             <button type="button" className="btn btn-primary" onClick={() => onGo(zone.id)}>
               {t('card.go')}
             </button>
           </li>
         ))}
       </ul>
+      {busyZone && <BusynessPopup zone={busyZone} onClose={() => setBusyZone(null)} />}
     </section>
   );
 }

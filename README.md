@@ -189,6 +189,11 @@ the UI currently loads Madrid only, so a city picker would also be needed.
 
 - Parking zone data: Ayuntamiento de Madrid open data portal,
   [datos.madrid.es](https://datos.madrid.es) (see its terms of use).
+- Parking tickets (CC BY 4.0), used for the "usual availability" estimate: Ayuntamiento de Madrid,
+  [SER tiques de aparcamiento](https://datos.madrid.es/dataset/300470-0-ser-uso-parquimetros).
+  Rebuild `public/data/madrid/busyness.json` with `python3 scripts/build-busyness.py` (downloads
+  about 800 MB of quarterly ZIPs; needs network, no Node). Tickets undercount parked cars, so it is
+  a relative, historic indication, not a live count.
 - Barrio boundaries and codes: Ayuntamiento de Madrid, "Límite de Barrios de la Zona S.E.R."
   layer of its regulated-parking map service. Refresh `public/data/madrid/barrios.geojson`
   with `python3 scripts/build-barrios.py` (needs network; no Node required).
