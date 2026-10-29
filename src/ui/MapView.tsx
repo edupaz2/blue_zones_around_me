@@ -40,6 +40,12 @@ const HIGHLIGHT_ZOOM = 16;
 const PIN_COLOR = '#d32f2f';
 const TRIED_COLOR = '#9e9e9e';
 const CLUSTER_MAX_ZOOM = 14;
+const METERS_URL = new URL(
+  `${import.meta.env.BASE_URL}data/madrid/parquimetros.geojson`,
+  window.location.href,
+).href;
+// Clusters break up above CLUSTER_MAX_ZOOM, so this is where single spots appear.
+const METERS_MIN_ZOOM = CLUSTER_MAX_ZOOM + 1;
 
 // One clustered GeoJSON source per kind, so every cluster bubble is single
 // coloured and blue/green are styled by the exact same expressions.
@@ -161,6 +167,25 @@ export default function MapView({
         if (setupDone) return;
         setupDone = true;
         const empty: FeatureCollection = { type: 'FeatureCollection', features: [] };
+        // Parking meters: only once individual spots are visible, and below the
+        // zone layers so they never bury a spot.
+        map.addSource('meters', {
+          type: 'geojson',
+          data: METERS_URL,
+          attribution: 'Parquímetros: Ayuntamiento de Madrid',
+        });
+        map.addLayer({
+          id: 'meters',
+          type: 'circle',
+          source: 'meters',
+          minzoom: METERS_MIN_ZOOM,
+          paint: {
+            'circle-color': '#455a64',
+            'circle-radius': ['interpolate', ['linear'], ['zoom'], METERS_MIN_ZOOM, 3, 18, 5],
+            'circle-stroke-width': 1,
+            'circle-stroke-color': '#ffffff',
+          },
+        });
         for (const kind of STACK_ORDER) {
           const color = madridConfig.kinds[kind].color;
           const src = sourceId(kind);

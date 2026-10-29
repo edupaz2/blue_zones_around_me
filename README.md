@@ -189,6 +189,9 @@ the UI currently loads Madrid only, so a city picker would also be needed.
 
 - Parking zone data: Ayuntamiento de Madrid open data portal,
   [datos.madrid.es](https://datos.madrid.es) (see its terms of use).
+- Parking meter locations: Ayuntamiento de Madrid, "Parquímetros" layer of its regulated-parking
+  map service. Refresh `public/data/madrid/parquimetros.geojson` with
+  `python3 scripts/build-parquimetros.py` (needs network; no Node required).
 - Map data: &copy; [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors,
   served as vector tiles by [OpenFreeMap](https://openfreemap.org), rendered with
   [MapLibre GL JS](https://maplibre.org).
