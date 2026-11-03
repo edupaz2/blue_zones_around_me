@@ -5,7 +5,7 @@ import type { FeatureCollection } from 'geojson';
 import type { ExpressionSpecification, GeoJSONSource } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { Position } from '../adapters/location';
-import { madridConfig } from '../cities/madrid/config';
+import { city } from '../cities';
 import type { LatLng, Settings } from '../core/types';
 import { useI18n } from '../i18n';
 import { createLongPress } from './longPress';
@@ -42,11 +42,11 @@ const PIN_COLOR = '#d32f2f';
 const TRIED_COLOR = '#9e9e9e';
 const CLUSTER_MAX_ZOOM = 14;
 const BARRIOS_URL = new URL(
-  `${import.meta.env.BASE_URL}data/madrid/barrios.geojson`,
+  `${import.meta.env.BASE_URL}data/${city.id}/barrios.geojson`,
   window.location.href,
 ).href;
 const METERS_URL = new URL(
-  `${import.meta.env.BASE_URL}data/madrid/parquimetros.geojson`,
+  `${import.meta.env.BASE_URL}data/${city.id}/parquimetros.geojson`,
   window.location.href,
 ).href;
 // Clusters break up above CLUSTER_MAX_ZOOM, so this is where single spots appear.
@@ -158,7 +158,7 @@ export default function MapView({
       const map = new MapLibreMap({
         container,
         style: style as string,
-        center: [madridConfig.center.lng, madridConfig.center.lat],
+        center: [city.center.lng, city.center.lat],
         zoom: 13,
         attributionControl: { compact: true },
       });
@@ -177,7 +177,7 @@ export default function MapView({
         map.addSource('barrios', {
           type: 'geojson',
           data: BARRIOS_URL,
-          attribution: 'Barrios: Ayuntamiento de Madrid',
+          attribution: city.attribution.barrios,
         });
         map.addLayer({
           id: 'barrios-fill',
@@ -209,27 +209,29 @@ export default function MapView({
               'text-halo-width': 1.5,
             },
           });
-        // Parking meters: only once individual spots are visible, and below the
-        // zone layers so they never bury a spot.
-        map.addSource('meters', {
-          type: 'geojson',
-          data: METERS_URL,
-          attribution: 'Parquímetros: Ayuntamiento de Madrid',
-        });
-        map.addLayer({
-          id: 'meters',
-          type: 'circle',
-          source: 'meters',
-          minzoom: METERS_MIN_ZOOM,
-          paint: {
-            'circle-color': METERS_COLOR,
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], METERS_MIN_ZOOM, 3, 18, 5],
-            'circle-stroke-width': 1,
-            'circle-stroke-color': '#ffffff',
-          },
-        });
+        // Parking meters (only for cities that publish them): only once individual
+        // spots are visible, and below the zone layers so they never bury a spot.
+        if (city.attribution.meters) {
+          map.addSource('meters', {
+            type: 'geojson',
+            data: METERS_URL,
+            attribution: city.attribution.meters,
+          });
+          map.addLayer({
+            id: 'meters',
+            type: 'circle',
+            source: 'meters',
+            minzoom: METERS_MIN_ZOOM,
+            paint: {
+              'circle-color': METERS_COLOR,
+              'circle-radius': ['interpolate', ['linear'], ['zoom'], METERS_MIN_ZOOM, 3, 18, 5],
+              'circle-stroke-width': 1,
+              'circle-stroke-color': '#ffffff',
+            },
+          });
+        }
         for (const kind of STACK_ORDER) {
-          const color = madridConfig.kinds[kind].color;
+          const color = city.kinds[kind].color;
           const src = sourceId(kind);
           map.addSource(src, {
             type: 'geojson',
@@ -301,7 +303,7 @@ export default function MapView({
           paint: {
             'circle-color': '#1a73e8',
             'circle-opacity': 0.15,
-            'circle-radius': accuracyRadius(0, madridConfig.center.lat),
+            'circle-radius': accuracyRadius(0, city.center.lat),
             'circle-stroke-width': 1,
             'circle-stroke-color': '#1a73e8',
             'circle-stroke-opacity': 0.4,

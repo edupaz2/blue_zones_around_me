@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { city } from '../cities';
 import type { CandidateZone, Stretch } from '../core/types';
 
 export interface ZoneData {
@@ -23,8 +24,8 @@ async function fetchFile<T>(url: string): Promise<DataFile<T>> {
 async function loadZoneData(): Promise<ZoneData> {
   const base = import.meta.env.BASE_URL;
   const [stretches, candidates] = await Promise.all([
-    fetchFile<Stretch>(`${base}data/madrid/stretches.json`),
-    fetchFile<CandidateZone>(`${base}data/madrid/candidates.json`),
+    fetchFile<Stretch>(`${base}data/${city.id}/stretches.json`),
+    fetchFile<CandidateZone>(`${base}data/${city.id}/candidates.json`),
   ]);
   return {
     stretches: stretches.items,

@@ -3,7 +3,7 @@ import { onAppReturn } from '../adapters/appVisibility';
 import { watchLocation } from '../adapters/location';
 import type { LocationStatus, Position } from '../adapters/location';
 import { loadSession, loadSettings, saveSession, saveSettings } from '../adapters/storage';
-import { madridConfig } from '../cities/madrid/config';
+import { city } from '../cities';
 import { rankCandidates } from '../core/ranking';
 import type { RankResult } from '../core/ranking';
 import { sessionReducer } from '../core/session';
@@ -28,7 +28,7 @@ export function useAppState(data: ZoneData): {
   const [settings, setSettingsState] = useState<Settings>(loadSettings);
   const [position, setPosition] = useState<Position | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>('unknown');
-  const [radiiM, setRadiiM] = useState<number[]>(madridConfig.radiiM);
+  const [radiiM, setRadiiM] = useState<number[]>(city.radiiM);
 
   // Mirror of the reducer state so every transition can be persisted synchronously,
   // before any follow-up side effect (e.g. opening the nav app, after which iOS may
@@ -47,7 +47,7 @@ export function useAppState(data: ZoneData): {
   const dispatch = useCallback(
     (action: SessionAction): SessionState => {
       if (action.type === 'start' || action.type === 'cancel' || action.type === 'dismiss')
-        setRadiiM(madridConfig.radiiM);
+        setRadiiM(city.radiiM);
       return apply(action);
     },
     [apply],
@@ -80,7 +80,7 @@ export function useAppState(data: ZoneData): {
     if (session.origin === null || session.status === 'idle') return { ranked: [], radiusM: null };
     return rankCandidates(session.origin.point, data.candidates, session.tried, {
       radiiM,
-      maxResults: madridConfig.maxResults,
+      maxResults: city.maxResults,
     });
   }, [session.origin, session.status, session.tried, data.candidates, radiiM]);
 

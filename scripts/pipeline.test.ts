@@ -1,7 +1,9 @@
 // @vitest-environment node
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { barcelonaConfig } from '../src/cities/barcelona/config';
 import { madridConfig } from '../src/cities/madrid/config';
+import { decodeBarcelonaCsv, loadBarris, parseBarcelonaCsv } from './cities/barcelona/parse';
 import { buildDataFiles, diffByKind } from './pipeline';
 
 const bytes = readFileSync(new URL('./cities/madrid/fixtures/ser-sample.csv', import.meta.url));
@@ -35,6 +37,39 @@ describe('buildDataFiles', () => {
         city: madridConfig,
       }),
     ).toThrow(/Row count/);
+  });
+});
+
+describe('buildDataFiles with the Barcelona parser', () => {
+  const trams = readFileSync(
+    new URL('./cities/barcelona/fixtures/trams-sample.csv', import.meta.url),
+  );
+  const barris = loadBarris(
+    JSON.parse(
+      readFileSync(new URL('../public/data/barcelona/barrios.geojson', import.meta.url), 'utf8'),
+    ),
+  );
+
+  it('keeps blue and green stretches and groups the blue ones', () => {
+    const out = buildDataFiles({
+      csvBytes: trams,
+      sourceDate: '2026-10-01',
+      previousCount: null,
+      now: new Date('2026-11-03T12:00:00Z'),
+      city: barcelonaConfig,
+      parse: (b) => parseBarcelonaCsv(decodeBarcelonaCsv(b), barris),
+    });
+    expect(out.stretches.items.map((s) => s.kind).sort()).toEqual([
+      'resident',
+      'resident',
+      'resident',
+      'visitor',
+      'visitor',
+      'visitor',
+    ]);
+    // Each blue stretch sits in a different barri, so each is its own candidate zone.
+    expect(out.candidates.items.length).toBe(3);
+    expect(out.candidates.items.every((z) => z.city === 'barcelona')).toBe(true);
   });
 });
 

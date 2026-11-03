@@ -1,16 +1,34 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from 'vite';
+import { readdirSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // GitHub Pages serves the repo under /blue_zones_around_me/; CI sets VITE_BASE.
 const base = process.env.VITE_BASE ?? '/';
+// Which city this build serves (see src/cities/index.ts); only the manifest text needs its name here.
+const cityId = process.env.VITE_CITY ?? 'madrid';
+const cityName = cityId.charAt(0).toUpperCase() + cityId.slice(1);
+
+// public/ is copied as is, so drop the other cities' data from the bundle (and the PWA precache).
+const onlyThisCityData = (): Plugin => ({
+  name: 'only-this-city-data',
+  apply: 'build',
+  writeBundle(options) {
+    const dataDir = join(options.dir ?? 'dist', 'data');
+    for (const dir of readdirSync(dataDir)) {
+      if (dir !== cityId) rmSync(join(dataDir, dir), { recursive: true, force: true });
+    }
+  },
+});
 
 export default defineConfig({
   base,
   plugins: [
     react(),
+    onlyThisCityData(),
     // Opt-in local HTTPS for phone testing (geolocation needs a secure context).
     ...(process.env.HTTPS === '1' ? [basicSsl()] : []),
     VitePWA({
@@ -18,8 +36,7 @@ export default defineConfig({
       manifest: {
         name: 'Blue Zones Around Me',
         short_name: 'Blue Zones',
-        description:
-          "See Madrid's blue and green parking zones and find the nearest blue zone to park.",
+        description: `See ${cityName}'s blue and green parking zones and find the nearest blue zone to park.`,
         start_url: base,
         scope: base,
         display: 'standalone',

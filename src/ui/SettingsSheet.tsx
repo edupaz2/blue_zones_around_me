@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { madridConfig } from '../cities/madrid/config';
+import { city } from '../cities';
 import type { Settings } from '../core/types';
 import { useI18n } from '../i18n';
 
@@ -10,7 +10,7 @@ interface Props {
   onClose: () => void;
 }
 
-const { visitor, resident } = madridConfig.kinds;
+const { visitor, resident } = city.kinds;
 
 export default function SettingsSheet({ settings, sourceDate, onChange, onClose }: Props) {
   const { t, formatDate } = useI18n();

@@ -1,3 +1,5 @@
+import { city } from '../cities';
+
 /** Typical availability of blue spaces per barrio, weekday and hour (see scripts/build-busyness.py). */
 export interface BusynessTable {
   days: { from: string; to: string };
@@ -8,7 +10,7 @@ export interface BusynessTable {
 export interface HourSlot {
   /** Hours relative to now: -2 … +2. */
   offset: number;
-  /** Clock hour 0–23 (Madrid time). */
+  /** Clock hour 0–23 (city time). */
   hour: number;
   /** Usual % of blue spaces free; null when the zone is not regulated at that hour. */
   pct: number | null;
@@ -18,10 +20,10 @@ export const OFFSETS = [-2, -1, 0, 1, 2] as const;
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-/** Weekday (Mon=0) and hour in Madrid, whatever the device time zone. */
-export function madridNow(now: Date): { weekday: number; hour: number } {
+/** Weekday (Mon=0) and hour in the city, whatever the device time zone. */
+export function cityNow(now: Date): { weekday: number; hour: number } {
   const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/Madrid',
+    timeZone: city.timeZone,
     weekday: 'short',
     hour: 'numeric',
     hourCycle: 'h23',
@@ -35,7 +37,7 @@ export function hourSlots(table: BusynessTable, zoneId: string, now: Date): Hour
   const code = table.byZone[zoneId];
   const avail = code ? table.barrios[code]?.avail : undefined;
   if (!avail) return null;
-  const { weekday, hour } = madridNow(now);
+  const { weekday, hour } = cityNow(now);
   return OFFSETS.map((offset) => {
     const slot = (((weekday * 24 + hour + offset) % 168) + 168) % 168;
     return { offset, hour: slot % 24, pct: avail[Math.floor(slot / 24)]?.[slot % 24] ?? null };
@@ -51,7 +53,7 @@ let cached: Promise<BusynessTable> | null = null;
 
 /** Fetched on first use only (a ~50 KB file), then reused; a failure is not cached. */
 export function loadBusyness(): Promise<BusynessTable> {
-  cached ??= fetch(`${import.meta.env.BASE_URL}data/madrid/busyness.json`)
+  cached ??= fetch(`${import.meta.env.BASE_URL}data/${city.id}/busyness.json`)
     .then((res) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json() as Promise<unknown>;

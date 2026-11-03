@@ -15,6 +15,8 @@ export interface PipelineInput {
   previousCount: number | null;
   now: Date;
   city: Pick<CityConfig, 'id' | 'bounds' | 'groupingRadiusM'>;
+  /** Raw file bytes -> stretches. Defaults to the Madrid SER parser. */
+  parse?: (bytes: Uint8Array) => Stretch[];
 }
 
 export interface PipelineOutput {
@@ -25,10 +27,11 @@ export interface PipelineOutput {
 const byId = (a: { id: string }, b: { id: string }): number =>
   a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 
-/** Pure part of the pipeline: CSV bytes -> parse -> validate -> group. */
+/** Pure part of the pipeline: file bytes -> parse -> validate -> group. */
 export function buildDataFiles(input: PipelineInput): PipelineOutput {
   const { csvBytes, sourceDate, previousCount, now, city } = input;
-  const parsed = parseMadridCsv(decodeMadridCsv(csvBytes));
+  const parse = input.parse ?? ((bytes: Uint8Array) => parseMadridCsv(decodeMadridCsv(bytes)));
+  const parsed = parse(csvBytes);
   const kept = parsed.filter((s) => s.kind === 'visitor' || s.kind === 'resident').sort(byId);
   validateStretches(kept, city.bounds, previousCount);
   const generatedAt = now.toISOString();

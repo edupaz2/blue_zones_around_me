@@ -3,6 +3,7 @@ import { formatNumber, useI18n } from '../i18n';
 import type { Locale } from '../i18n';
 import type { RankResult } from '../core/ranking';
 import type { CandidateZone, Origin } from '../core/types';
+import { city } from '../cities';
 import BusynessPopup from './BusynessPopup';
 
 interface Props {
@@ -108,14 +109,16 @@ export default function CandidatePanel({
                 {mode === 'around' ? t('card.fromYou') : t('card.fromDestination')}
               </span>
             </button>
-            <button
-              type="button"
-              className="btn btn-pct"
-              aria-label={t('card.busyness', { name: zoneName(zone) })}
-              onClick={() => setBusyZone(zone)}
-            >
-              %
-            </button>
+            {city.hasBusyness && (
+              <button
+                type="button"
+                className="btn btn-pct"
+                aria-label={t('card.busyness', { name: zoneName(zone) })}
+                onClick={() => setBusyZone(zone)}
+              >
+                %
+              </button>
+            )}
             <button type="button" className="btn btn-primary" onClick={() => onGo(zone.id)}>
               {t('card.go')}
             </button>

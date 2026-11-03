@@ -1,13 +1,24 @@
 # Blue Zones Around Me
 
-A mobile-first, installable web app (PWA) that helps you find parking in Madrid's
-regulated parking area (SER). It shows the blue zones (visitor parking) and green
+A mobile-first, installable web app (PWA) that helps you find parking in a city's
+regulated parking area: Madrid (SER) or Barcelona (Àrea Blava and Àrea Verda). It shows the blue zones (visitor parking) and green
 zones (resident parking) on a map, suggests the top 3 nearest blue zones to where
 you are or to a destination you search for, and hands you off to Google Maps or Waze
 to drive there. If you did not find a spot, "next zone" marks the zone as tried and
 suggests another one.
 
-Live app: https://edupaz2.github.io/blue_zones_around_me/
+Live app (Madrid): https://edupaz2.github.io/blue_zones_around_me/
+
+Each build serves one city, chosen at build time with `VITE_CITY` (`madrid`, the
+default, or `barcelona`):
+
+```sh
+VITE_CITY=barcelona npm run dev
+VITE_CITY=barcelona npm run build
+```
+
+Only the chosen city's data ends up in the bundle and the PWA cache. Barcelona is not
+deployed by CI (it only checks that it builds); it would need its own Pages path or host.
 
 ## Quick start
 
@@ -20,16 +31,17 @@ npm run dev
 
 ## Scripts
 
-| Script                | What it does                                                     |
-| --------------------- | ---------------------------------------------------------------- |
-| `npm run dev`         | Vite dev server                                                  |
-| `npm run build`       | Type check, then production build into `dist/`                   |
-| `npm run lint`        | ESLint                                                           |
-| `npm run typecheck`   | `tsc --noEmit`                                                   |
-| `npm run format`      | Prettier check (use `npx prettier --write .` to fix)             |
-| `npm test`            | Vitest unit and UI tests                                         |
-| `npm run test:e2e`    | Playwright end-to-end tests (builds and previews the app itself) |
-| `npm run data:madrid` | Refresh the Madrid zone data in `public/data/madrid/`            |
+| Script                   | What it does                                                     |
+| ------------------------ | ---------------------------------------------------------------- |
+| `npm run dev`            | Vite dev server                                                  |
+| `npm run build`          | Type check, then production build into `dist/`                   |
+| `npm run lint`           | ESLint                                                           |
+| `npm run typecheck`      | `tsc --noEmit`                                                   |
+| `npm run format`         | Prettier check (use `npx prettier --write .` to fix)             |
+| `npm test`               | Vitest unit and UI tests                                         |
+| `npm run test:e2e`       | Playwright end-to-end tests (builds and previews the app itself) |
+| `npm run data:madrid`    | Refresh the Madrid zone data in `public/data/madrid/`            |
+| `npm run data:barcelona` | Refresh the Barcelona zone data in `public/data/barcelona/`      |
 
 ## Project structure
 
@@ -100,7 +112,8 @@ The UI is available in English (`en`) and Spanish (`es`). The language is picked
 automatically from the system/browser language (`navigator.languages`, first
 supported match wins); anything else falls back to English. There is no manual
 switch. Zone and street names come from the data and are never translated, and
-Madrid's official zone names ("Zona azul", "Zona verde") are kept as is.
+the official zone names ("Zona azul", "Zona verde" in Madrid; "Àrea blava", "Àrea verda" in
+Barcelona) are kept as is.
 
 The web app manifest (name and description) and the static `<title>` in
 `index.html` are build-time and stay in English; at runtime the app sets
@@ -160,7 +173,7 @@ implementation inside `src/analytics/index.ts`, keeping the `track` signature.
 
 **Address lookup (not analytics)**
 
-- Typing in the search box sends only the typed text (and the Madrid bounding box)
+- Typing in the search box sends only the typed text (and the city's bounding box)
   to the public [Photon](https://photon.komoot.io) geocoder, to suggest addresses.
 - After a long-press on the map, the app shows the address of the pressed point. For
   that it sends the pressed coordinates (not your GPS position, unless you pressed
@@ -175,15 +188,36 @@ implementation inside `src/analytics/index.ts`, keeping the `track` signature.
 - Zones are grouped clusters of stretches, not official SER sectors.
 - No live parking availability.
 - SER operating hours, fees and payment are ignored: a blue zone is treated as blue at all times.
-- Madrid only; no accounts, sync, in-app navigation or saved parking location.
+- One city per build; no accounts, sync, in-app navigation or saved parking location.
+- Barcelona has no "usual availability" estimate (the council publishes no ticket data) and no
+  parking meter layer (no meter locations in its open data); both are hidden for that city.
 
 ## Adding another city
 
 Add a per-city config (`src/cities/<city>/config.ts`: bounds, centre, geocoder box,
-zone kinds, grouping radius, search radii) and a parser in
-`scripts/cities/<city>/parse.ts` that turns the city's source data into stretches,
-then wire a `data:<city>` script. The core logic, adapters and UI are city-agnostic;
-the UI currently loads Madrid only, so a city picker would also be needed.
+time zone, area name, attributions, zone kinds, grouping radius, search radii) and
+register it in `src/cities/index.ts`. Add a parser in `scripts/cities/<city>/parse.ts`
+that turns the city's source data into stretches, then wire a `data:<city>` script that
+passes it to `buildDataFiles` as `parse`. The core logic, adapters and UI are
+city-agnostic. Barcelona is the worked example.
+
+### Barcelona data
+
+`npm run data:barcelona` (after `python3 scripts/build-barris.py` the first time) resolves
+`TRAMS.csv` through the Open Data BCN CKAN API (dataset `trams-aparcament-superficie`),
+parses it with `scripts/cities/barcelona/parse.ts`, validates and groups it like Madrid,
+and writes `stretches.json` and `candidates.json` to `public/data/barcelona/`. You can pass a
+local file (`npm run data:barcelona -- path/to/TRAMS.csv`) or set `TRAMS_CSV_PATH`.
+
+- Blue = Àrea Blava (`AZL`). Green = Àrea Verda: `VM` (mixed: visitors pay a higher rate for
+  1-2 h) and `VR` (residents only). Loading bays (`DUM`) and coach bays (`BUS`) are dropped.
+- The council splits each tram into several rows and repeats its space count on every row, so
+  spaces are counted once per `ID_TRAM` (summing rows would overstate blue spaces 2.3x).
+- The CSV has no neighbourhood: each tram gets the barri containing it, from
+  `public/data/barcelona/barrios.geojson`.
+- The one tram without a tariff (a test point in the sea) is skipped.
+- The CKAN `last_modified` of `TRAMS.csv` is stale (2021) although its content is the newest
+  quarter, so the source date is the creation date of the newest quarterly ZIP.
 
 ## Attribution and data
 
@@ -194,6 +228,11 @@ the UI currently loads Madrid only, so a city picker would also be needed.
   Rebuild `public/data/madrid/busyness.json` with `python3 scripts/build-busyness.py` (downloads
   about 800 MB of quarterly ZIPs; needs network, no Node). Tickets undercount parked cars, so it is
   a relative, historic indication, not a live count.
+- Barcelona parking zones and barri boundaries: Ajuntament de Barcelona,
+  [Open Data BCN](https://opendata-ajuntament.barcelona.cat) (CC BY 4.0): "Trams d'aparcament en
+  superfície" and "Unitats administratives de la ciutat de Barcelona". Refresh
+  `public/data/barcelona/barrios.geojson` with `python3 scripts/build-barris.py` (needs network;
+  no Node required).
 - Barrio boundaries and codes: Ayuntamiento de Madrid, "Límite de Barrios de la Zona S.E.R."
   layer of its regulated-parking map service. Refresh `public/data/madrid/barrios.geojson`
   with `python3 scripts/build-barrios.py` (needs network; no Node required).

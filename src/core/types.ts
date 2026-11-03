@@ -22,6 +22,14 @@ export type BBox = [west: number, south: number, east: number, north: number];
 export interface CityConfig {
   id: string;
   name: string;
+  /** IANA time zone the city's regulated hours run in. */
+  timeZone: string;
+  /** Name of the regulated parking area as the UI shows it, per language. */
+  area: { en: string; es: string };
+  /** Map credits for the barrio layer, and for the meter layer (null: city has no meter layer). */
+  attribution: { barrios: string; meters: string | null };
+  /** Whether a "usual availability" estimate (busyness.json) is published for the city. */
+  hasBusyness: boolean;
   center: LatLng;
   bounds: BBox;
   geocoderBbox: BBox;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { LocationStatus, Position } from '../adapters/location';
-import { madridConfig } from '../cities/madrid/config';
+import { city } from '../cities';
 import { inBounds } from '../core/bounds';
 import type { Origin } from '../core/types';
 import { useI18n } from '../i18n';
@@ -12,14 +12,14 @@ interface Props {
 }
 
 export default function AroundMeButton({ position, locationStatus, onPress }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [outside, setOutside] = useState(false);
   const blocked = locationStatus === 'denied' || locationStatus === 'unavailable';
   const disabled = blocked || position === null;
 
   const press = () => {
     if (!position) return;
-    if (!inBounds(position.point, madridConfig.bounds)) {
+    if (!inBounds(position.point, city.bounds)) {
       setOutside(true);
       return;
     }
@@ -49,7 +49,7 @@ export default function AroundMeButton({ position, locationStatus, onPress }: Pr
       )}
       {outside && (
         <p className="note" role="alert">
-          {t('around.outside')}
+          {t('around.outside', { area: city.area[locale] })}
         </p>
       )}
     </div>

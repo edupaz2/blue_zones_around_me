@@ -6,6 +6,13 @@ import type { CityConfig } from '../../core/types';
 export const madridConfig: CityConfig = {
   id: 'madrid',
   name: 'Madrid',
+  timeZone: 'Europe/Madrid',
+  area: { en: 'Madrid SER area', es: 'del área SER de Madrid' },
+  attribution: {
+    barrios: 'Barrios: Ayuntamiento de Madrid',
+    meters: 'Parquímetros: Ayuntamiento de Madrid',
+  },
+  hasBusyness: true,
   center: { lat: 40.416775, lng: -3.70379 }, // Puerta del Sol
   bounds: [-3.755, 40.369, -3.629, 40.499],
   geocoderBbox: [-3.802, 40.333, -3.582, 40.535],

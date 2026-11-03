@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hourSlots, madridNow } from './busyness';
+import { hourSlots, cityNow } from './busyness';
 import type { BusynessTable } from './busyness';
 
 // Tuesday (index 1) is 100 - hour, other days all closed.
@@ -17,10 +17,10 @@ const table: BusynessTable = {
   byZone: { z1: '24' },
 };
 
-describe('madridNow', () => {
+describe('cityNow', () => {
   it('uses Madrid time (CEST = UTC+2 in July) and Monday as day 0', () => {
-    expect(madridNow(new Date('2026-07-14T12:30:00Z'))).toEqual({ weekday: 1, hour: 14 });
-    expect(madridNow(new Date('2026-07-13T22:30:00Z'))).toEqual({ weekday: 1, hour: 0 });
+    expect(cityNow(new Date('2026-07-14T12:30:00Z'))).toEqual({ weekday: 1, hour: 14 });
+    expect(cityNow(new Date('2026-07-13T22:30:00Z'))).toEqual({ weekday: 1, hour: 0 });
   });
 });
 
