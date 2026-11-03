@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { searchPlaces } from '../adapters/geocoder';
 import type { GeoResult } from '../adapters/geocoder';
-import { madridConfig } from '../cities/madrid/config';
+import { city } from '../cities';
 import { useI18n } from '../i18n';
 
 interface Props {
@@ -27,7 +27,7 @@ export default function SearchBar({ onSelect, search = searchPlaces }: Props) {
       return;
     }
     const timer = setTimeout(() => {
-      search(q, madridConfig).then(
+      search(q, city).then(
         (r) => {
           if (id !== seq.current) return;
           setResults(r);

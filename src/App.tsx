@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { reversePlace } from './adapters/geocoder';
 import { track } from './analytics';
-import { madridConfig } from './cities/madrid/config';
+import { city } from './cities';
 import { inBounds } from './core/bounds';
 import { buildNavigationUrl } from './core/handoff';
 import type { LatLng } from './core/types';
@@ -22,7 +22,7 @@ import type { ZoneData } from './ui/useZoneData';
 import './ui/ui.css';
 
 function Ready({ data }: { data: ZoneData }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { session, settings, position, locationStatus, ranked, dispatch, setSettings, widen } =
     useAppState(data);
   const [pickedId, setSelectedId] = useState<string | null>(null);
@@ -52,7 +52,7 @@ function Ready({ data }: { data: ZoneData }) {
   };
 
   const onLongPress = (p: LatLng) => {
-    if (!inBounds(p, madridConfig.bounds)) {
+    if (!inBounds(p, city.bounds)) {
       setPointError(true);
       return;
     }
@@ -189,7 +189,7 @@ function Ready({ data }: { data: ZoneData }) {
         <StaleDataBanner sourceDate={data.sourceDate} now={Date.now()} />
         {pointError && (
           <p className="note" role="alert">
-            {t('app.pointOutside')}
+            {t('app.pointOutside', { area: city.area[locale] })}
           </p>
         )}
       </div>

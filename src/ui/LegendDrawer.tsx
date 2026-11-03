@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { madridConfig } from '../cities/madrid/config';
+import { city } from '../cities';
 import { useI18n } from '../i18n';
 import { METERS_COLOR } from './mapColors';
 
@@ -7,7 +7,7 @@ interface Props {
   onClose: () => void;
 }
 
-const { visitor, resident } = madridConfig.kinds;
+const { visitor, resident } = city.kinds;
 
 export default function LegendDrawer({ onClose }: Props) {
   const { t } = useI18n();
@@ -24,7 +24,9 @@ export default function LegendDrawer({ onClose }: Props) {
   const items = [
     { key: 'visitor', color: visitor.color, text: t('legend.visitor'), meter: false },
     { key: 'resident', color: resident.color, text: t('legend.resident'), meter: false },
-    { key: 'meter', color: METERS_COLOR, text: t('legend.meter'), meter: true },
+    ...(city.attribution.meters
+      ? [{ key: 'meter', color: METERS_COLOR, text: t('legend.meter'), meter: true }]
+      : []),
   ];
   return (
     <div

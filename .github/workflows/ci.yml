@@ -32,6 +32,10 @@ jobs:
             playwright-report/
             test-results/
           if-no-files-found: ignore
+      # Barcelona is not deployed, but it must keep building (into a temp dir).
+      - run: npx vite build --outDir "$RUNNER_TEMP/dist-barcelona"
+        env:
+          VITE_CITY: barcelona
       # Final build for GitHub Pages (overwrites the e2e build in dist).
       - run: npm run build
         env:
